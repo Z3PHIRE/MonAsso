@@ -35,14 +35,18 @@ public class ExportsScreen extends VBox {
         Label title = new Label("Exports");
         title.getStyleClass().add("screen-title");
 
-        Label subtitle = new Label("Export CSV local des membres, evenements et cotisations.");
+        Label subtitle = new Label("Exports CSV, XLSX et PDF vers un dossier local configurable.");
         subtitle.getStyleClass().add("screen-subtitle");
 
-        VBox locationPanel = createLocationPanel();
-        HBox buttonRow = createExportActions();
-        VBox outputPanel = createOutputPanel();
-
-        getChildren().addAll(title, subtitle, locationPanel, buttonRow, outputPanel);
+        getChildren().addAll(
+                title,
+                subtitle,
+                createLocationPanel(),
+                createCsvPanel(),
+                createXlsxPanel(),
+                createPdfPanel(),
+                createOutputPanel()
+        );
         refreshLocationField();
     }
 
@@ -65,30 +69,92 @@ public class ExportsScreen extends VBox {
         openButton.setOnAction(event -> openDirectory());
 
         HBox actions = new HBox(10, chooseButton, openButton);
+        actions.getStyleClass().add("action-row");
         panel.getChildren().addAll(label, exportPathField, actions);
         return panel;
     }
 
-    private HBox createExportActions() {
-        Button exportMembersButton = new Button("Exporter Membres");
-        exportMembersButton.getStyleClass().add("primary-button");
-        exportMembersButton.setOnAction(event -> exportMembers());
+    private VBox createCsvPanel() {
+        VBox panel = new VBox(10);
+        panel.getStyleClass().add("panel-card");
 
-        Button exportEventsButton = new Button("Exporter Evenements");
-        exportEventsButton.getStyleClass().add("primary-button");
-        exportEventsButton.setOnAction(event -> exportEvents());
+        Label panelTitle = new Label("Exports CSV");
+        panelTitle.getStyleClass().add("section-label");
 
-        Button exportContributionsButton = new Button("Exporter Cotisations");
-        exportContributionsButton.getStyleClass().add("primary-button");
-        exportContributionsButton.setOnAction(event -> exportContributions());
+        Button membersButton = new Button("Membres CSV");
+        membersButton.getStyleClass().add("primary-button");
+        membersButton.setOnAction(event -> runExport(() -> exportService.exportMembersCsv(exportDirectory), "Membres CSV exportes"));
 
-        Button exportAllButton = new Button("Exporter Tout");
-        exportAllButton.getStyleClass().add("accent-button");
-        exportAllButton.setOnAction(event -> exportAll());
+        Button eventsButton = new Button("Evenements CSV");
+        eventsButton.getStyleClass().add("primary-button");
+        eventsButton.setOnAction(event -> runExport(() -> exportService.exportEventsCsv(exportDirectory), "Evenements CSV exportes"));
 
-        HBox row = new HBox(10, exportMembersButton, exportEventsButton, exportContributionsButton, exportAllButton);
-        row.getStyleClass().add("action-row");
-        return row;
+        Button contributionsButton = new Button("Cotisations CSV");
+        contributionsButton.getStyleClass().add("primary-button");
+        contributionsButton.setOnAction(event -> runExport(() -> exportService.exportContributionsCsv(exportDirectory), "Cotisations CSV exportees"));
+
+        Button allButton = new Button("Tout CSV");
+        allButton.getStyleClass().add("accent-button");
+        allButton.setOnAction(event -> exportAllCsv());
+
+        HBox actions = new HBox(10, membersButton, eventsButton, contributionsButton, allButton);
+        actions.getStyleClass().add("action-row");
+        panel.getChildren().addAll(panelTitle, actions);
+        return panel;
+    }
+
+    private VBox createXlsxPanel() {
+        VBox panel = new VBox(10);
+        panel.getStyleClass().add("panel-card");
+
+        Label panelTitle = new Label("Exports Excel (XLSX)");
+        panelTitle.getStyleClass().add("section-label");
+
+        Button membersButton = new Button("Membres XLSX");
+        membersButton.getStyleClass().add("primary-button");
+        membersButton.setOnAction(event -> runExport(() -> exportService.exportMembersXlsx(exportDirectory), "Membres XLSX exportes"));
+
+        Button eventsButton = new Button("Evenements XLSX");
+        eventsButton.getStyleClass().add("primary-button");
+        eventsButton.setOnAction(event -> runExport(() -> exportService.exportEventsXlsx(exportDirectory), "Evenements XLSX exportes"));
+
+        Button contributionsButton = new Button("Cotisations XLSX");
+        contributionsButton.getStyleClass().add("primary-button");
+        contributionsButton.setOnAction(event -> runExport(() -> exportService.exportContributionsXlsx(exportDirectory), "Cotisations XLSX exportees"));
+
+        Button globalButton = new Button("Global XLSX (3 feuilles)");
+        globalButton.getStyleClass().add("accent-button");
+        globalButton.setOnAction(event -> runExport(() -> exportService.exportGlobalXlsx(exportDirectory), "Export global XLSX termine"));
+
+        HBox actions = new HBox(10, membersButton, eventsButton, contributionsButton, globalButton);
+        actions.getStyleClass().add("action-row");
+        panel.getChildren().addAll(panelTitle, actions);
+        return panel;
+    }
+
+    private VBox createPdfPanel() {
+        VBox panel = new VBox(10);
+        panel.getStyleClass().add("panel-card");
+
+        Label panelTitle = new Label("Rapports PDF");
+        panelTitle.getStyleClass().add("section-label");
+
+        Button membersButton = new Button("Rapport membres");
+        membersButton.getStyleClass().add("primary-button");
+        membersButton.setOnAction(event -> runExport(() -> exportService.exportMembersPdf(exportDirectory), "Rapport membres genere"));
+
+        Button eventsButton = new Button("Rapport evenements");
+        eventsButton.getStyleClass().add("primary-button");
+        eventsButton.setOnAction(event -> runExport(() -> exportService.exportEventsPdf(exportDirectory), "Rapport evenements genere"));
+
+        Button contributionsButton = new Button("Rapport cotisations");
+        contributionsButton.getStyleClass().add("primary-button");
+        contributionsButton.setOnAction(event -> runExport(() -> exportService.exportContributionsPdf(exportDirectory), "Rapport cotisations genere"));
+
+        HBox actions = new HBox(10, membersButton, eventsButton, contributionsButton);
+        actions.getStyleClass().add("action-row");
+        panel.getChildren().addAll(panelTitle, actions);
+        return panel;
     }
 
     private VBox createOutputPanel() {
@@ -104,17 +170,23 @@ public class ExportsScreen extends VBox {
     }
 
     private void chooseDirectory() {
-        DirectoryChooser chooser = new DirectoryChooser();
-        chooser.setTitle("Choisir le dossier d'export");
-        chooser.setInitialDirectory(exportDirectory.toFile());
-        var selected = chooser.showDialog(getScene().getWindow());
-        if (selected == null) {
-            return;
+        try {
+            DirectoryChooser chooser = new DirectoryChooser();
+            chooser.setTitle("Choisir le dossier d'export");
+            if (exportDirectory != null && exportDirectory.toFile().exists()) {
+                chooser.setInitialDirectory(exportDirectory.toFile());
+            }
+            var selected = chooser.showDialog(getScene().getWindow());
+            if (selected == null) {
+                return;
+            }
+            exportDirectory = selected.toPath().toAbsolutePath().normalize();
+            settingsService.setExportDirectory(exportDirectory);
+            refreshLocationField();
+            AlertUtils.info(getScene().getWindow(), "Exports", "Dossier d'export mis a jour.");
+        } catch (Exception e) {
+            AlertUtils.error(getScene().getWindow(), "Exports", e.getMessage());
         }
-        exportDirectory = selected.toPath().toAbsolutePath().normalize();
-        settingsService.setExportDirectory(exportDirectory);
-        refreshLocationField();
-        AlertUtils.info(getScene().getWindow(), "Exports", "Dossier d'export mis a jour.");
     }
 
     private void openDirectory() {
@@ -125,34 +197,39 @@ public class ExportsScreen extends VBox {
         }
     }
 
-    private void exportMembers() {
-        Path result = exportService.exportMembers(exportDirectory);
-        onExportSuccess("Membres exportes: " + result);
+    private void exportAllCsv() {
+        try {
+            Path members = exportService.exportMembersCsv(exportDirectory);
+            Path events = exportService.exportEventsCsv(exportDirectory);
+            Path contributions = exportService.exportContributionsCsv(exportDirectory);
+            onSuccess("Exports CSV termines:\n" + members + "\n" + events + "\n" + contributions);
+        } catch (Exception e) {
+            AlertUtils.error(getScene().getWindow(), "Exports", e.getMessage());
+            statusLabel.setText("Erreur: " + e.getMessage());
+        }
     }
 
-    private void exportEvents() {
-        Path result = exportService.exportEvents(exportDirectory);
-        onExportSuccess("Evenements exportes: " + result);
+    private void runExport(ExportOperation exportOperation, String successTitle) {
+        try {
+            Path target = exportOperation.execute();
+            onSuccess(successTitle + ":\n" + target);
+        } catch (Exception e) {
+            AlertUtils.error(getScene().getWindow(), "Exports", e.getMessage());
+            statusLabel.setText("Erreur: " + e.getMessage());
+        }
     }
 
-    private void exportContributions() {
-        Path result = exportService.exportContributions(exportDirectory);
-        onExportSuccess("Cotisations exportees: " + result);
-    }
-
-    private void exportAll() {
-        Path members = exportService.exportMembers(exportDirectory);
-        Path events = exportService.exportEvents(exportDirectory);
-        Path contributions = exportService.exportContributions(exportDirectory);
-        onExportSuccess("Exports termines:\n" + members + "\n" + events + "\n" + contributions);
-    }
-
-    private void onExportSuccess(String message) {
+    private void onSuccess(String message) {
         statusLabel.setText(message);
         AlertUtils.info(getScene().getWindow(), "Exports", "Operation terminee.");
     }
 
     private void refreshLocationField() {
         exportPathField.setText(exportDirectory.toString());
+    }
+
+    @FunctionalInterface
+    private interface ExportOperation {
+        Path execute();
     }
 }

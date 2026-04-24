@@ -152,7 +152,7 @@ public class MainView {
         navigationManager.register(ScreenId.EVENTS, () -> new EventsScreen(appContext.eventService(), appContext.memberService()));
         navigationManager.register(ScreenId.CONTRIBUTIONS, () -> new ContributionsScreen(appContext.contributionService(), appContext.memberService()));
         navigationManager.register(ScreenId.EXPORTS, () -> new ExportsScreen(appContext.exportService(), appContext.settingsService()));
-        navigationManager.register(ScreenId.SETTINGS, () -> new SettingsScreen(appContext.settingsService()));
+        navigationManager.register(ScreenId.SETTINGS, () -> new SettingsScreen(appContext.settingsService(), appContext.dataSafetyService(), this::reloadDataViews));
         navigationManager.register(ScreenId.PERSONALIZATION, () -> new PersonalizationScreen(appContext.brandingService(), appContext.themeManager()));
     }
 
@@ -170,5 +170,14 @@ public class MainView {
     private void refreshBranding(BrandingService brandingService) {
         appTitleLabel.setText(brandingService.getCurrentBranding().appName());
         logoView.setImage(brandingService.loadLogoImage(170, 80));
+    }
+
+    private void reloadDataViews() {
+        ScreenId current = navigationManager.currentScreen();
+        if (current == null) {
+            current = ScreenId.DASHBOARD;
+        }
+        navigationManager.clearCache();
+        navigationManager.navigate(current);
     }
 }

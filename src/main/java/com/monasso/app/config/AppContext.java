@@ -3,6 +3,7 @@ package com.monasso.app.config;
 import com.monasso.app.repository.DatabaseManager;
 import com.monasso.app.service.BrandingService;
 import com.monasso.app.service.ContributionService;
+import com.monasso.app.service.DataSafetyService;
 import com.monasso.app.service.DashboardService;
 import com.monasso.app.service.EventService;
 import com.monasso.app.service.ExportService;
@@ -20,6 +21,7 @@ public class AppContext implements AutoCloseable {
     private final ContributionService contributionService;
     private final ExportService exportService;
     private final SettingsService settingsService;
+    private final DataSafetyService dataSafetyService;
 
     public AppContext(
             DatabaseManager databaseManager,
@@ -30,7 +32,8 @@ public class AppContext implements AutoCloseable {
             EventService eventService,
             ContributionService contributionService,
             ExportService exportService,
-            SettingsService settingsService
+            SettingsService settingsService,
+            DataSafetyService dataSafetyService
     ) {
         this.databaseManager = databaseManager;
         this.brandingService = brandingService;
@@ -41,6 +44,7 @@ public class AppContext implements AutoCloseable {
         this.contributionService = contributionService;
         this.exportService = exportService;
         this.settingsService = settingsService;
+        this.dataSafetyService = dataSafetyService;
     }
 
     public BrandingService brandingService() {
@@ -73,6 +77,10 @@ public class AppContext implements AutoCloseable {
 
     public SettingsService settingsService() {
         return settingsService;
+    }
+
+    public DataSafetyService dataSafetyService() {
+        return dataSafetyService;
     }
 
     @Override

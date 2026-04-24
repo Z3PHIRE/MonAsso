@@ -97,11 +97,15 @@ public class BrandingService {
     }
 
     public Image loadLogoImage(double requestedWidth, double requestedHeight) {
-        Path logo = resolveLogoPath(getCurrentBranding());
+        Path logo = getResolvedLogoPath();
         if (!Files.exists(logo)) {
             logo = AppPaths.logoPath();
         }
         return new Image(logo.toUri().toString(), requestedWidth, requestedHeight, true, true);
+    }
+
+    public Path getResolvedLogoPath() {
+        return resolveLogoPath(getCurrentBranding());
     }
 
     public Image loadAppIcon() {

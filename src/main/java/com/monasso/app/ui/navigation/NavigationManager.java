@@ -38,4 +38,12 @@ public class NavigationManager {
     public ReadOnlyObjectProperty<ScreenId> currentScreenProperty() {
         return currentScreen;
     }
+
+    public void clearCache() {
+        cache.clear();
+    }
+
+    public ScreenId currentScreen() {
+        return currentScreen.get();
+    }
 }

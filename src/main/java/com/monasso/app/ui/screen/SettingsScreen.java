@@ -1,5 +1,6 @@
 package com.monasso.app.ui.screen;
 
+import com.monasso.app.service.DataSafetyService;
 import com.monasso.app.service.SettingsService;
 import com.monasso.app.util.AlertUtils;
 import com.monasso.app.util.DesktopUtils;
@@ -7,25 +8,33 @@ import javafx.geometry.Insets;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
+import javafx.scene.control.TextInputDialog;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 import javafx.stage.DirectoryChooser;
+import javafx.stage.FileChooser;
 
 import java.nio.file.Path;
+import java.util.Optional;
 
 public class SettingsScreen extends VBox {
 
     private final SettingsService settingsService;
+    private final DataSafetyService dataSafetyService;
+    private final Runnable onDataReload;
 
     private final TextField databasePathField = new TextField();
     private final TextField exportPathField = new TextField();
     private final TextField backupPathField = new TextField();
+    private final TextField selectedBackupField = new TextField();
     private final Label statusLabel = new Label();
 
-    public SettingsScreen(SettingsService settingsService) {
+    public SettingsScreen(SettingsService settingsService, DataSafetyService dataSafetyService, Runnable onDataReload) {
         this.settingsService = settingsService;
+        this.dataSafetyService = dataSafetyService;
+        this.onDataReload = onDataReload;
 
         getStyleClass().add("content-root");
         setPadding(new Insets(20));
@@ -34,14 +43,17 @@ public class SettingsScreen extends VBox {
         Label title = new Label("Parametres");
         title.getStyleClass().add("screen-title");
 
-        Label subtitle = new Label("Configurez les chemins locaux utilises par l'application.");
+        Label subtitle = new Label("Chemins applicatifs, sauvegarde et restauration de la base SQLite.");
         subtitle.getStyleClass().add("screen-subtitle");
         subtitle.setWrapText(true);
 
-        VBox pathsPanel = createPathsPanel();
-        VBox actionsPanel = createActionsPanel();
-
-        getChildren().addAll(title, subtitle, pathsPanel, actionsPanel);
+        getChildren().addAll(
+                title,
+                subtitle,
+                createPathsPanel(),
+                createDataSafetyPanel(),
+                createActionsPanel()
+        );
         reloadFromSettings();
     }
 
@@ -68,6 +80,42 @@ public class SettingsScreen extends VBox {
         statusLabel.setWrapText(true);
 
         panel.getChildren().addAll(panelTitle, grid, statusLabel);
+        return panel;
+    }
+
+    private VBox createDataSafetyPanel() {
+        VBox panel = new VBox(10);
+        panel.getStyleClass().add("panel-card");
+
+        Label panelTitle = new Label("Securite des donnees");
+        panelTitle.getStyleClass().add("section-label");
+
+        selectedBackupField.setEditable(false);
+        selectedBackupField.setPromptText("Selectionnez un fichier de sauvegarde .db");
+
+        Button createBackupButton = new Button("Creer sauvegarde maintenant");
+        createBackupButton.getStyleClass().add("accent-button");
+        createBackupButton.setOnAction(event -> createBackupNow());
+
+        Button chooseBackupButton = new Button("Choisir sauvegarde");
+        chooseBackupButton.getStyleClass().add("ghost-button");
+        chooseBackupButton.setOnAction(event -> chooseBackupFile());
+
+        Button restoreButton = new Button("Restaurer sauvegarde");
+        restoreButton.getStyleClass().add("danger-button");
+        restoreButton.setOnAction(event -> restoreSelectedBackup());
+
+        Button openBackupFolder = new Button("Ouvrir dossier backups");
+        openBackupFolder.getStyleClass().add("primary-button");
+        openBackupFolder.setOnAction(event -> openBackupDirectory());
+
+        HBox row1 = new HBox(10, createBackupButton, openBackupFolder);
+        row1.getStyleClass().add("action-row");
+
+        HBox row2 = new HBox(10, chooseBackupButton, restoreButton);
+        row2.getStyleClass().add("action-row");
+
+        panel.getChildren().addAll(panelTitle, selectedBackupField, row1, row2);
         return panel;
     }
 
@@ -150,6 +198,85 @@ public class SettingsScreen extends VBox {
         } catch (Exception e) {
             AlertUtils.error(getScene().getWindow(), "Parametres", e.getMessage());
         }
+    }
+
+    private void createBackupNow() {
+        try {
+            Path backupFile = dataSafetyService.createBackup();
+            selectedBackupField.setText(backupFile.toString());
+            statusLabel.setText("Sauvegarde creee: " + backupFile);
+            AlertUtils.info(getScene().getWindow(), "Sauvegarde", "Sauvegarde terminee.");
+        } catch (Exception e) {
+            AlertUtils.error(getScene().getWindow(), "Sauvegarde", e.getMessage());
+        }
+    }
+
+    private void openBackupDirectory() {
+        try {
+            DesktopUtils.openDirectory(settingsService.getBackupDirectory());
+        } catch (Exception e) {
+            AlertUtils.error(getScene().getWindow(), "Sauvegarde", e.getMessage());
+        }
+    }
+
+    private void chooseBackupFile() {
+        try {
+            FileChooser chooser = new FileChooser();
+            chooser.setTitle("Choisir un fichier de sauvegarde");
+            chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Base SQLite (*.db)", "*.db"));
+
+            Path backupDirectory = settingsService.getBackupDirectory();
+            if (backupDirectory != null && backupDirectory.toFile().exists()) {
+                chooser.setInitialDirectory(backupDirectory.toFile());
+            }
+
+            var selected = chooser.showOpenDialog(getScene().getWindow());
+            if (selected != null) {
+                selectedBackupField.setText(selected.toPath().toAbsolutePath().normalize().toString());
+            }
+        } catch (Exception e) {
+            AlertUtils.error(getScene().getWindow(), "Restauration", e.getMessage());
+        }
+    }
+
+    private void restoreSelectedBackup() {
+        Path selectedBackup = pathFromField(selectedBackupField);
+        if (selectedBackup == null) {
+            AlertUtils.warning(getScene().getWindow(), "Restauration", "Selectionnez une sauvegarde avant de restaurer.");
+            return;
+        }
+
+        boolean basicConfirm = AlertUtils.confirm(
+                getScene().getWindow(),
+                "Restauration",
+                "Restaurer la base depuis:\n" + selectedBackup + "\n\nLes donnees actuelles seront remplacees."
+        );
+        if (!basicConfirm) {
+            return;
+        }
+
+        if (!confirmStrongRestore()) {
+            return;
+        }
+
+        try {
+            Path restoredDb = dataSafetyService.restoreBackup(selectedBackup);
+            statusLabel.setText("Restauration terminee: " + restoredDb);
+            onDataReload.run();
+            AlertUtils.info(getScene().getWindow(), "Restauration", "Restauration terminee. Les ecrans ont ete recharges.");
+        } catch (Exception e) {
+            AlertUtils.error(getScene().getWindow(), "Restauration", e.getMessage());
+        }
+    }
+
+    private boolean confirmStrongRestore() {
+        TextInputDialog dialog = new TextInputDialog();
+        dialog.initOwner(getScene().getWindow());
+        dialog.setTitle("Confirmation forte");
+        dialog.setHeaderText("Tapez RESTAURER pour confirmer");
+        dialog.setContentText("Confirmation:");
+        Optional<String> value = dialog.showAndWait();
+        return value.filter(text -> "RESTAURER".equals(text.trim())).isPresent();
     }
 
     private void savePathSettings() {

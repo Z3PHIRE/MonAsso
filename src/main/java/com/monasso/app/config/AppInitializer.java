@@ -9,6 +9,7 @@ import com.monasso.app.repository.MemberRepository;
 import com.monasso.app.repository.SchemaInitializer;
 import com.monasso.app.service.BrandingService;
 import com.monasso.app.service.ContributionService;
+import com.monasso.app.service.DataSafetyService;
 import com.monasso.app.service.DashboardService;
 import com.monasso.app.service.EventService;
 import com.monasso.app.service.ExportService;
@@ -29,7 +30,8 @@ public class AppInitializer {
         ThemeManager themeManager = new ThemeManager(brandingService);
 
         DatabaseManager databaseManager = new DatabaseManager(AppPaths.databasePath());
-        new SchemaInitializer(databaseManager).initialize();
+        SchemaInitializer schemaInitializer = new SchemaInitializer(databaseManager);
+        schemaInitializer.initialize();
 
         MemberRepository memberRepository = new MemberRepository(databaseManager);
         EventRepository eventRepository = new EventRepository(databaseManager);
@@ -41,8 +43,9 @@ public class AppInitializer {
         EventService eventService = new EventService(eventRepository, eventParticipantRepository, memberRepository);
         ContributionService contributionService = new ContributionService(contributionRepository, memberRepository);
         SettingsService settingsService = new SettingsService(appSettingsRepository);
+        DataSafetyService dataSafetyService = new DataSafetyService(settingsService, schemaInitializer);
         DashboardService dashboardService = new DashboardService(memberRepository, eventRepository, contributionRepository);
-        ExportService exportService = new ExportService(memberRepository, eventRepository, contributionRepository);
+        ExportService exportService = new ExportService(memberRepository, eventRepository, contributionRepository, brandingService);
 
         return new AppContext(
                 databaseManager,
@@ -53,7 +56,8 @@ public class AppInitializer {
                 eventService,
                 contributionService,
                 exportService,
-                settingsService
+                settingsService,
+                dataSafetyService
         );
     }
 
