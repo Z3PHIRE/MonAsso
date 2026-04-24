@@ -23,6 +23,7 @@ import javafx.scene.layout.VBox;
 import javafx.util.StringConverter;
 
 import java.time.LocalDate;
+import java.util.Locale;
 
 public class ContributionsScreen extends VBox {
 
@@ -36,6 +37,9 @@ public class ContributionsScreen extends VBox {
     private final DatePicker contributionDatePicker = new DatePicker(LocalDate.now());
     private final TextField paymentMethodField = new TextField();
     private final TextArea notesArea = new TextArea();
+    private final Label tableSummary = new Label();
+
+    private final TableView<Contribution> tableView = createTable();
 
     public ContributionsScreen(ContributionService contributionService, MemberService memberService) {
         this.contributionService = contributionService;
@@ -48,20 +52,21 @@ public class ContributionsScreen extends VBox {
         Label title = new Label("Cotisations");
         title.getStyleClass().add("screen-title");
 
-        Label subtitle = new Label("Enregistrez les cotisations liees aux membres.");
+        Label subtitle = new Label("Enregistrez les cotisations, visualisez les paiements et supprimez si necessaire.");
         subtitle.getStyleClass().add("screen-subtitle");
 
-        TableView<Contribution> tableView = createTable();
         VBox.setVgrow(tableView, Priority.ALWAYS);
+        VBox formPanel = createFormPanel();
 
-        VBox formPanel = createFormPanel(tableView);
+        tableSummary.getStyleClass().add("muted-text");
+        getChildren().addAll(title, subtitle, formPanel, tableSummary, tableView);
 
-        getChildren().addAll(title, subtitle, formPanel, tableView);
-        refreshData(tableView);
+        refreshData();
     }
 
     private TableView<Contribution> createTable() {
-        TableView<Contribution> tableView = new TableView<>(contributions);
+        TableView<Contribution> table = new TableView<>(contributions);
+        table.getStyleClass().add("app-table");
 
         TableColumn<Contribution, Number> idColumn = new TableColumn<>("ID");
         idColumn.setCellValueFactory(cell -> new javafx.beans.property.SimpleLongProperty(cell.getValue().id()));
@@ -72,7 +77,7 @@ public class ContributionsScreen extends VBox {
         memberColumn.setPrefWidth(200);
 
         TableColumn<Contribution, String> amountColumn = new TableColumn<>("Montant");
-        amountColumn.setCellValueFactory(cell -> new javafx.beans.property.SimpleStringProperty(String.format("%.2f EUR", cell.getValue().amount())));
+        amountColumn.setCellValueFactory(cell -> new javafx.beans.property.SimpleStringProperty(String.format(Locale.FRANCE, "%.2f EUR", cell.getValue().amount())));
         amountColumn.setPrefWidth(120);
 
         TableColumn<Contribution, String> dateColumn = new TableColumn<>("Date");
@@ -87,12 +92,12 @@ public class ContributionsScreen extends VBox {
         notesColumn.setCellValueFactory(cell -> new javafx.beans.property.SimpleStringProperty(defaultValue(cell.getValue().notes())));
         notesColumn.setPrefWidth(260);
 
-        tableView.getColumns().addAll(idColumn, memberColumn, amountColumn, dateColumn, methodColumn, notesColumn);
-        tableView.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
-        return tableView;
+        table.getColumns().addAll(idColumn, memberColumn, amountColumn, dateColumn, methodColumn, notesColumn);
+        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
+        return table;
     }
 
-    private VBox createFormPanel(TableView<Contribution> tableView) {
+    private VBox createFormPanel() {
         VBox panel = new VBox(12);
         panel.getStyleClass().add("panel-card");
 
@@ -133,18 +138,31 @@ public class ContributionsScreen extends VBox {
 
         Button addButton = new Button("Ajouter");
         addButton.getStyleClass().add("accent-button");
-        addButton.setOnAction(event -> addContribution(tableView));
+        addButton.setOnAction(event -> addContribution());
+
+        Button deleteButton = new Button("Supprimer selection");
+        deleteButton.getStyleClass().add("danger-button");
+        deleteButton.setOnAction(event -> deleteSelectedContribution());
 
         Button refreshButton = new Button("Recharger");
         refreshButton.getStyleClass().add("ghost-button");
-        refreshButton.setOnAction(event -> refreshData(tableView));
+        refreshButton.setOnAction(event -> refreshData());
 
-        HBox actions = new HBox(10, addButton, refreshButton);
+        HBox actions = new HBox(10, addButton, deleteButton, refreshButton);
+        actions.getStyleClass().add("action-row");
         panel.getChildren().addAll(formTitle, grid, actions);
         return panel;
     }
 
-    private void addContribution(TableView<Contribution> tableView) {
+    private void addContribution() {
+        if (memberCombo.getValue() == null) {
+            AlertUtils.warning(getScene().getWindow(), "Cotisations", "Selectionnez un membre.");
+            return;
+        }
+        if (amountField.getText() == null || amountField.getText().isBlank()) {
+            AlertUtils.warning(getScene().getWindow(), "Cotisations", "Le montant est obligatoire.");
+            return;
+        }
         try {
             Member selectedMember = memberCombo.getValue();
             double amount = parseAmount(amountField.getText());
@@ -156,17 +174,46 @@ public class ContributionsScreen extends VBox {
                     notesArea.getText()
             );
             clearForm();
-            refreshData(tableView);
+            refreshData();
             AlertUtils.info(getScene().getWindow(), "Cotisations", "Cotisation enregistree avec succes.");
         } catch (Exception e) {
             AlertUtils.error(getScene().getWindow(), "Cotisations", e.getMessage());
         }
     }
 
-    private void refreshData(TableView<Contribution> tableView) {
+    private void deleteSelectedContribution() {
+        Contribution selected = tableView.getSelectionModel().getSelectedItem();
+        if (selected == null) {
+            AlertUtils.warning(getScene().getWindow(), "Cotisations", "Selectionnez une cotisation a supprimer.");
+            return;
+        }
+        boolean confirmed = AlertUtils.confirm(
+                getScene().getWindow(),
+                "Cotisations",
+                "Supprimer la cotisation #" + selected.id() + " de " + selected.memberName() + " ?"
+        );
+        if (!confirmed) {
+            return;
+        }
+        try {
+            contributionService.deleteContribution(selected.id());
+            refreshData();
+            AlertUtils.info(getScene().getWindow(), "Cotisations", "Cotisation supprimee.");
+        } catch (Exception e) {
+            AlertUtils.error(getScene().getWindow(), "Cotisations", e.getMessage());
+        }
+    }
+
+    private void refreshData() {
         members.setAll(memberService.getAllMembers());
         contributions.setAll(contributionService.getAllContributions());
         tableView.refresh();
+        tableSummary.setText(String.format(
+                Locale.FRANCE,
+                "Total cotisations : %d | Membres avec cotisation cette annee : %d",
+                contributions.size(),
+                contributionService.countPaidMembersForYear(LocalDate.now().getYear())
+        ));
     }
 
     private void clearForm() {
@@ -178,9 +225,6 @@ public class ContributionsScreen extends VBox {
     }
 
     private double parseAmount(String rawValue) {
-        if (rawValue == null || rawValue.isBlank()) {
-            throw new IllegalArgumentException("Le montant est obligatoire.");
-        }
         String normalized = rawValue.replace(",", ".").trim();
         try {
             return Double.parseDouble(normalized);

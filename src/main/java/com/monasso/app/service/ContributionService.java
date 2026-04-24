@@ -41,6 +41,16 @@ public class ContributionService {
         return contributionRepository.create(contribution);
     }
 
+    public long countPaidMembersForYear(int year) {
+        return contributionRepository.countDistinctMembersForYear(year);
+    }
+
+    public void deleteContribution(long contributionId) {
+        if (!contributionRepository.deleteById(contributionId)) {
+            throw new IllegalStateException("La cotisation n'existe plus.");
+        }
+    }
+
     private String cleanOptional(String value) {
         return value == null || value.isBlank() ? null : value.trim();
     }

@@ -2,6 +2,7 @@ package com.monasso.app.ui;
 
 import com.monasso.app.config.AppContext;
 import com.monasso.app.service.BrandingService;
+import com.monasso.app.ui.component.PictogramFactory;
 import com.monasso.app.ui.navigation.NavigationManager;
 import com.monasso.app.ui.navigation.ScreenId;
 import com.monasso.app.ui.screen.ContributionsScreen;
@@ -12,8 +13,10 @@ import com.monasso.app.ui.screen.MembersScreen;
 import com.monasso.app.ui.screen.PersonalizationScreen;
 import com.monasso.app.ui.screen.SettingsScreen;
 import javafx.geometry.Insets;
+import javafx.geometry.Pos;
 import javafx.scene.Parent;
 import javafx.scene.control.Button;
+import javafx.scene.control.ContentDisplay;
 import javafx.scene.control.Label;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.BorderPane;
@@ -27,6 +30,16 @@ import java.util.EnumMap;
 import java.util.Map;
 
 public class MainView {
+
+    private static final Map<ScreenId, String> SCREEN_PICTOGRAMS = Map.of(
+            ScreenId.DASHBOARD, "DB",
+            ScreenId.MEMBERS, "MB",
+            ScreenId.EVENTS, "EV",
+            ScreenId.CONTRIBUTIONS, "CT",
+            ScreenId.EXPORTS, "EX",
+            ScreenId.SETTINGS, "PR",
+            ScreenId.PERSONALIZATION, "TH"
+    );
 
     private final AppContext appContext;
     private final BorderPane root = new BorderPane();
@@ -44,6 +57,7 @@ public class MainView {
         VBox sidebar = createSidebar();
 
         StackPane contentPane = new StackPane();
+        contentPane.getStyleClass().add("content-host");
         contentPane.setPadding(new Insets(0));
         navigationManager = new NavigationManager(contentPane);
         configureNavigation();
@@ -72,8 +86,9 @@ public class MainView {
         topBar.getStyleClass().add("top-bar");
 
         appTitleLabel.getStyleClass().add("app-title");
+
         Label offlineTag = new Label("Mode local hors ligne");
-        offlineTag.getStyleClass().add("muted-text");
+        offlineTag.getStyleClass().add("status-pill");
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
@@ -85,19 +100,20 @@ public class MainView {
         VBox sidebar = new VBox(10);
         sidebar.getStyleClass().add("sidebar");
 
-        VBox logoBlock = new VBox(8);
+        VBox logoBlock = new VBox(10);
         logoBlock.getStyleClass().add("sidebar-logo");
+        logoBlock.setAlignment(Pos.CENTER_LEFT);
 
-        logoView.setFitWidth(160);
+        logoView.setFitWidth(170);
         logoView.setFitHeight(80);
         logoView.setPreserveRatio(true);
 
         Label navLabel = new Label("Navigation");
-        navLabel.setStyle("-fx-text-fill: white; -fx-font-weight: 700;");
+        navLabel.getStyleClass().add("sidebar-section-title");
 
         logoBlock.getChildren().addAll(logoView, navLabel);
-
         sidebar.getChildren().add(logoBlock);
+
         for (ScreenId screenId : ScreenId.values()) {
             Button button = createNavButton(screenId);
             navButtons.put(screenId, button);
@@ -107,11 +123,27 @@ public class MainView {
     }
 
     private Button createNavButton(ScreenId screenId) {
-        Button button = new Button(screenId.label());
+        Button button = new Button();
         button.getStyleClass().add("nav-button");
         button.setMaxWidth(Double.MAX_VALUE);
+        button.setContentDisplay(ContentDisplay.GRAPHIC_ONLY);
+        button.setGraphic(createNavButtonGraphic(screenId));
         button.setOnAction(event -> navigationManager.navigate(screenId));
         return button;
+    }
+
+    private HBox createNavButtonGraphic(ScreenId screenId) {
+        HBox content = new HBox(10);
+        content.setAlignment(Pos.CENTER_LEFT);
+
+        String pictogram = SCREEN_PICTOGRAMS.getOrDefault(screenId, "NA");
+        var icon = PictogramFactory.createBadge(pictogram, "nav-icon-badge", "nav-icon-text");
+
+        Label label = new Label(screenId.label());
+        label.getStyleClass().add("nav-label");
+
+        content.getChildren().addAll(icon, label);
+        return content;
     }
 
     private void configureNavigation() {
@@ -119,7 +151,7 @@ public class MainView {
         navigationManager.register(ScreenId.MEMBERS, () -> new MembersScreen(appContext.memberService()));
         navigationManager.register(ScreenId.EVENTS, () -> new EventsScreen(appContext.eventService()));
         navigationManager.register(ScreenId.CONTRIBUTIONS, () -> new ContributionsScreen(appContext.contributionService(), appContext.memberService()));
-        navigationManager.register(ScreenId.EXPORTS, () -> new ExportsScreen(appContext.exportService()));
+        navigationManager.register(ScreenId.EXPORTS, () -> new ExportsScreen(appContext.exportService(), appContext.settingsService()));
         navigationManager.register(ScreenId.SETTINGS, () -> new SettingsScreen(appContext.settingsService()));
         navigationManager.register(ScreenId.PERSONALIZATION, () -> new PersonalizationScreen(appContext.brandingService(), appContext.themeManager()));
     }
@@ -137,6 +169,6 @@ public class MainView {
 
     private void refreshBranding(BrandingService brandingService) {
         appTitleLabel.setText(brandingService.getCurrentBranding().appName());
-        logoView.setImage(brandingService.loadLogoImage(160, 80));
+        logoView.setImage(brandingService.loadLogoImage(170, 80));
     }
 }

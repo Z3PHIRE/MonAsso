@@ -59,6 +59,8 @@ public class AppInitializer {
         try {
             Files.createDirectories(AppPaths.assetsBrandingDir());
             Files.createDirectories(AppPaths.dataDir());
+            Files.createDirectories(AppPaths.exportsDir());
+            Files.createDirectories(AppPaths.backupsDir());
         } catch (IOException e) {
             throw new IllegalStateException("Impossible de creer les dossiers applicatifs.", e);
         }

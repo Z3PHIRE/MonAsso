@@ -37,6 +37,12 @@ public class MemberService {
         return memberRepository.create(member);
     }
 
+    public void deleteMember(long memberId) {
+        if (!memberRepository.deleteById(memberId)) {
+            throw new IllegalStateException("Le membre n'existe plus.");
+        }
+    }
+
     private String cleanOptional(String value) {
         return value == null || value.isBlank() ? null : value.trim();
     }

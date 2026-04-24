@@ -83,6 +83,17 @@ public class MemberRepository {
         }
     }
 
+    public boolean deleteById(long memberId) {
+        String sql = "DELETE FROM members WHERE id = ?";
+        try (Connection connection = databaseManager.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setLong(1, memberId);
+            return statement.executeUpdate() > 0;
+        } catch (SQLException e) {
+            throw new IllegalStateException("Impossible de supprimer le membre " + memberId, e);
+        }
+    }
+
     private Member mapRow(ResultSet rs) throws SQLException {
         return new Member(
                 rs.getLong("id"),

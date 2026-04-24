@@ -99,6 +99,37 @@ public class ContributionRepository {
         }
     }
 
+    public long countDistinctMembersForYear(int year) {
+        String sql = """
+                SELECT COUNT(DISTINCT member_id)
+                FROM contributions
+                WHERE strftime('%Y', contribution_date) = ?
+                """;
+        try (Connection connection = databaseManager.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, String.valueOf(year));
+            try (ResultSet rs = statement.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getLong(1);
+                }
+                return 0;
+            }
+        } catch (SQLException e) {
+            throw new IllegalStateException("Impossible de compter les cotisations payees.", e);
+        }
+    }
+
+    public boolean deleteById(long contributionId) {
+        String sql = "DELETE FROM contributions WHERE id = ?";
+        try (Connection connection = databaseManager.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setLong(1, contributionId);
+            return statement.executeUpdate() > 0;
+        } catch (SQLException e) {
+            throw new IllegalStateException("Impossible de supprimer la cotisation " + contributionId, e);
+        }
+    }
+
     private Contribution mapRow(ResultSet rs) throws SQLException {
         return new Contribution(
                 rs.getLong("id"),

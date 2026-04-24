@@ -33,16 +33,27 @@ public class ThemeManager {
         }
     }
 
+    public void applyPreview(String primaryColor, String secondaryColor, String accentColor) {
+        if (scene == null) {
+            return;
+        }
+        applyStyleVariables(primaryColor, secondaryColor, accentColor);
+    }
+
     private void applyTheme(BrandingConfig brandingConfig) {
         if (scene == null) {
             return;
         }
+        applyStyleVariables(brandingConfig.primaryColor(), brandingConfig.secondaryColor(), brandingConfig.accentColor());
+    }
+
+    private void applyStyleVariables(String primaryColor, String secondaryColor, String accentColor) {
         Parent root = scene.getRoot();
         root.setStyle(String.format(
                 "-app-primary: %s; -app-secondary: %s; -app-accent: %s;",
-                brandingConfig.primaryColor(),
-                brandingConfig.secondaryColor(),
-                brandingConfig.accentColor()
+                primaryColor,
+                secondaryColor,
+                accentColor
         ));
     }
 

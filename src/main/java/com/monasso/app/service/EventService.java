@@ -35,6 +35,16 @@ public class EventService {
         return eventRepository.create(event);
     }
 
+    public List<Event> getUpcomingEvents(int limit) {
+        return eventRepository.findUpcoming(LocalDate.now(), limit);
+    }
+
+    public void deleteEvent(long eventId) {
+        if (!eventRepository.deleteById(eventId)) {
+            throw new IllegalStateException("L'evenement n'existe plus.");
+        }
+    }
+
     private String cleanOptional(String value) {
         return value == null || value.isBlank() ? null : value.trim();
     }

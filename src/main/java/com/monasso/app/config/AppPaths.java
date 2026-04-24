@@ -26,6 +26,14 @@ public final class AppPaths {
         return dataDir().resolve("monasso.db");
     }
 
+    public static Path exportsDir() {
+        return PROJECT_ROOT.resolve("exports");
+    }
+
+    public static Path backupsDir() {
+        return PROJECT_ROOT.resolve("backups");
+    }
+
     public static Path brandingJsonPath() {
         return assetsBrandingDir().resolve("branding.json");
     }

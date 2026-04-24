@@ -75,6 +75,57 @@ public class EventRepository {
         }
     }
 
+    public long countUpcoming(LocalDate fromDate) {
+        String sql = "SELECT COUNT(*) FROM events WHERE event_date >= ?";
+        try (Connection connection = databaseManager.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, fromDate.toString());
+            try (ResultSet rs = statement.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getLong(1);
+                }
+                return 0;
+            }
+        } catch (SQLException e) {
+            throw new IllegalStateException("Impossible de compter les prochains evenements.", e);
+        }
+    }
+
+    public List<Event> findUpcoming(LocalDate fromDate, int limit) {
+        String sql = """
+                SELECT id, name, event_date, location, description
+                FROM events
+                WHERE event_date >= ?
+                ORDER BY event_date ASC, id ASC
+                LIMIT ?
+                """;
+        List<Event> events = new ArrayList<>();
+        try (Connection connection = databaseManager.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, fromDate.toString());
+            statement.setInt(2, limit);
+            try (ResultSet rs = statement.executeQuery()) {
+                while (rs.next()) {
+                    events.add(mapRow(rs));
+                }
+            }
+            return events;
+        } catch (SQLException e) {
+            throw new IllegalStateException("Impossible de charger les prochains evenements.", e);
+        }
+    }
+
+    public boolean deleteById(long eventId) {
+        String sql = "DELETE FROM events WHERE id = ?";
+        try (Connection connection = databaseManager.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setLong(1, eventId);
+            return statement.executeUpdate() > 0;
+        } catch (SQLException e) {
+            throw new IllegalStateException("Impossible de supprimer l'evenement " + eventId, e);
+        }
+    }
+
     private Event mapRow(ResultSet rs) throws SQLException {
         return new Event(
                 rs.getLong("id"),

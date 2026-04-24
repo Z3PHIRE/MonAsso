@@ -29,6 +29,9 @@ public class EventsScreen extends VBox {
     private final DatePicker datePicker = new DatePicker(LocalDate.now());
     private final TextField locationField = new TextField();
     private final TextArea descriptionArea = new TextArea();
+    private final Label tableSummary = new Label();
+
+    private final TableView<Event> tableView = createTable();
 
     public EventsScreen(EventService eventService) {
         this.eventService = eventService;
@@ -40,20 +43,21 @@ public class EventsScreen extends VBox {
         Label title = new Label("Evenements");
         title.getStyleClass().add("screen-title");
 
-        Label subtitle = new Label("Planifiez les evenements associatifs et suivez leur calendrier.");
+        Label subtitle = new Label("Planifiez les evenements associatifs, puis suivez les dates a venir.");
         subtitle.getStyleClass().add("screen-subtitle");
 
-        TableView<Event> tableView = createTable();
         VBox.setVgrow(tableView, Priority.ALWAYS);
+        VBox formPanel = createFormPanel();
 
-        VBox formPanel = createFormPanel(tableView);
+        tableSummary.getStyleClass().add("muted-text");
+        getChildren().addAll(title, subtitle, formPanel, tableSummary, tableView);
 
-        getChildren().addAll(title, subtitle, formPanel, tableView);
-        refreshEvents(tableView);
+        refreshEvents();
     }
 
     private TableView<Event> createTable() {
-        TableView<Event> tableView = new TableView<>(events);
+        TableView<Event> table = new TableView<>(events);
+        table.getStyleClass().add("app-table");
 
         TableColumn<Event, Number> idColumn = new TableColumn<>("ID");
         idColumn.setCellValueFactory(cell -> new javafx.beans.property.SimpleLongProperty(cell.getValue().id()));
@@ -75,12 +79,12 @@ public class EventsScreen extends VBox {
         descriptionColumn.setCellValueFactory(cell -> new javafx.beans.property.SimpleStringProperty(defaultValue(cell.getValue().description())));
         descriptionColumn.setPrefWidth(320);
 
-        tableView.getColumns().addAll(idColumn, nameColumn, dateColumn, locationColumn, descriptionColumn);
-        tableView.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
-        return tableView;
+        table.getColumns().addAll(idColumn, nameColumn, dateColumn, locationColumn, descriptionColumn);
+        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
+        return table;
     }
 
-    private VBox createFormPanel(TableView<Event> tableView) {
+    private VBox createFormPanel() {
         VBox panel = new VBox(12);
         panel.getStyleClass().add("panel-card");
 
@@ -106,31 +110,69 @@ public class EventsScreen extends VBox {
 
         Button addButton = new Button("Ajouter");
         addButton.getStyleClass().add("accent-button");
-        addButton.setOnAction(event -> addEvent(tableView));
+        addButton.setOnAction(event -> addEvent());
+
+        Button deleteButton = new Button("Supprimer selection");
+        deleteButton.getStyleClass().add("danger-button");
+        deleteButton.setOnAction(event -> deleteSelectedEvent());
 
         Button refreshButton = new Button("Recharger");
         refreshButton.getStyleClass().add("ghost-button");
-        refreshButton.setOnAction(event -> refreshEvents(tableView));
+        refreshButton.setOnAction(event -> refreshEvents());
 
-        HBox actions = new HBox(10, addButton, refreshButton);
+        HBox actions = new HBox(10, addButton, deleteButton, refreshButton);
+        actions.getStyleClass().add("action-row");
         panel.getChildren().addAll(formTitle, grid, actions);
         return panel;
     }
 
-    private void addEvent(TableView<Event> tableView) {
+    private void addEvent() {
+        if (nameField.getText() == null || nameField.getText().isBlank()) {
+            AlertUtils.warning(getScene().getWindow(), "Evenements", "Le nom de l'evenement est obligatoire.");
+            return;
+        }
+        if (datePicker.getValue() == null) {
+            AlertUtils.warning(getScene().getWindow(), "Evenements", "La date de l'evenement est obligatoire.");
+            return;
+        }
         try {
             eventService.addEvent(nameField.getText(), datePicker.getValue(), locationField.getText(), descriptionArea.getText());
             clearForm();
-            refreshEvents(tableView);
+            refreshEvents();
             AlertUtils.info(getScene().getWindow(), "Evenements", "Evenement ajoute avec succes.");
         } catch (Exception e) {
             AlertUtils.error(getScene().getWindow(), "Evenements", e.getMessage());
         }
     }
 
-    private void refreshEvents(TableView<Event> tableView) {
+    private void deleteSelectedEvent() {
+        Event selected = tableView.getSelectionModel().getSelectedItem();
+        if (selected == null) {
+            AlertUtils.warning(getScene().getWindow(), "Evenements", "Selectionnez un evenement a supprimer.");
+            return;
+        }
+        boolean confirmed = AlertUtils.confirm(
+                getScene().getWindow(),
+                "Evenements",
+                "Supprimer l'evenement \"" + selected.name() + "\" ?"
+        );
+        if (!confirmed) {
+            return;
+        }
+        try {
+            eventService.deleteEvent(selected.id());
+            refreshEvents();
+            AlertUtils.info(getScene().getWindow(), "Evenements", "Evenement supprime.");
+        } catch (Exception e) {
+            AlertUtils.error(getScene().getWindow(), "Evenements", e.getMessage());
+        }
+    }
+
+    private void refreshEvents() {
         events.setAll(eventService.getAllEvents());
         tableView.refresh();
+        long upcoming = eventService.getUpcomingEvents(1000).size();
+        tableSummary.setText("Total : " + events.size() + " | Prochains evenements : " + upcoming);
     }
 
     private void clearForm() {

@@ -56,6 +56,8 @@ Installeur natif (selon OS):
 
 - `assets/branding` : branding modifiable (`logo.png`, `icon.png`, `branding.json`)
 - `data` : base SQLite locale (`monasso.db`)
+- `exports` : dossier d'exports CSV par defaut
+- `backups` : dossier de sauvegardes par defaut
 - `src/main/java/com/monasso/app/config` : configuration, branding, theme
 - `src/main/java/com/monasso/app/model` : modeles metier
 - `src/main/java/com/monasso/app/repository` : acces SQLite
@@ -69,3 +71,4 @@ Installeur natif (selon OS):
 - Le branding est charge depuis `assets/branding/branding.json` puis applique dynamiquement a l'UI.
 - L'ecran Personnalisation permet de modifier nom, couleurs et logo sans toucher au code.
 - Les exports sont generes en CSV local (pas de cloud, pas de service externe).
+- Les chemins `exports` et `backups` sont configurables depuis l'ecran Parametres.

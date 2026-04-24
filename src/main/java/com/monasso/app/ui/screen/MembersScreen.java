@@ -29,6 +29,9 @@ public class MembersScreen extends VBox {
     private final TextField emailField = new TextField();
     private final TextField phoneField = new TextField();
     private final DatePicker joinDatePicker = new DatePicker(LocalDate.now());
+    private final Label tableSummary = new Label();
+
+    private final TableView<Member> tableView = createTable();
 
     public MembersScreen(MemberService memberService) {
         this.memberService = memberService;
@@ -40,20 +43,21 @@ public class MembersScreen extends VBox {
         Label title = new Label("Membres");
         title.getStyleClass().add("screen-title");
 
-        Label subtitle = new Label("Ajout et consultation des membres de l'association.");
+        Label subtitle = new Label("Ajoutez, consultez et supprimez les membres de l'association.");
         subtitle.getStyleClass().add("screen-subtitle");
 
-        TableView<Member> tableView = createTable();
         VBox.setVgrow(tableView, Priority.ALWAYS);
+        VBox formPanel = createFormPanel();
 
-        VBox formPanel = createFormPanel(tableView);
+        tableSummary.getStyleClass().add("muted-text");
 
-        getChildren().addAll(title, subtitle, formPanel, tableView);
-        refreshMembers(tableView);
+        getChildren().addAll(title, subtitle, formPanel, tableSummary, tableView);
+        refreshMembers();
     }
 
     private TableView<Member> createTable() {
-        TableView<Member> tableView = new TableView<>(members);
+        TableView<Member> table = new TableView<>(members);
+        table.getStyleClass().add("app-table");
 
         TableColumn<Member, Number> idColumn = new TableColumn<>("ID");
         idColumn.setCellValueFactory(cell -> new javafx.beans.property.SimpleLongProperty(cell.getValue().id()));
@@ -75,12 +79,12 @@ public class MembersScreen extends VBox {
         joinDateColumn.setCellValueFactory(cell -> new javafx.beans.property.SimpleStringProperty(cell.getValue().joinDate().toString()));
         joinDateColumn.setPrefWidth(130);
 
-        tableView.getColumns().addAll(idColumn, fullNameColumn, emailColumn, phoneColumn, joinDateColumn);
-        tableView.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
-        return tableView;
+        table.getColumns().addAll(idColumn, fullNameColumn, emailColumn, phoneColumn, joinDateColumn);
+        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
+        return table;
     }
 
-    private VBox createFormPanel(TableView<Member> tableView) {
+    private VBox createFormPanel() {
         VBox panel = new VBox(12);
         panel.getStyleClass().add("panel-card");
 
@@ -108,18 +112,31 @@ public class MembersScreen extends VBox {
 
         Button addButton = new Button("Ajouter");
         addButton.getStyleClass().add("accent-button");
-        addButton.setOnAction(event -> addMember(tableView));
+        addButton.setOnAction(event -> addMember());
+
+        Button deleteButton = new Button("Supprimer selection");
+        deleteButton.getStyleClass().add("danger-button");
+        deleteButton.setOnAction(event -> deleteSelectedMember());
 
         Button refreshButton = new Button("Recharger");
         refreshButton.getStyleClass().add("ghost-button");
-        refreshButton.setOnAction(event -> refreshMembers(tableView));
+        refreshButton.setOnAction(event -> refreshMembers());
 
-        HBox actions = new HBox(10, addButton, refreshButton);
+        HBox actions = new HBox(10, addButton, deleteButton, refreshButton);
+        actions.getStyleClass().add("action-row");
         panel.getChildren().addAll(formTitle, grid, actions);
         return panel;
     }
 
-    private void addMember(TableView<Member> tableView) {
+    private void addMember() {
+        if (firstNameField.getText() == null || firstNameField.getText().isBlank()) {
+            AlertUtils.warning(getScene().getWindow(), "Membres", "Le prenom est obligatoire.");
+            return;
+        }
+        if (lastNameField.getText() == null || lastNameField.getText().isBlank()) {
+            AlertUtils.warning(getScene().getWindow(), "Membres", "Le nom est obligatoire.");
+            return;
+        }
         try {
             memberService.addMember(
                     firstNameField.getText(),
@@ -129,16 +146,40 @@ public class MembersScreen extends VBox {
                     joinDatePicker.getValue()
             );
             clearForm();
-            refreshMembers(tableView);
+            refreshMembers();
             AlertUtils.info(getScene().getWindow(), "Membres", "Membre ajoute avec succes.");
         } catch (Exception e) {
             AlertUtils.error(getScene().getWindow(), "Membres", e.getMessage());
         }
     }
 
-    private void refreshMembers(TableView<Member> tableView) {
+    private void deleteSelectedMember() {
+        Member selected = tableView.getSelectionModel().getSelectedItem();
+        if (selected == null) {
+            AlertUtils.warning(getScene().getWindow(), "Membres", "Selectionnez un membre a supprimer.");
+            return;
+        }
+        boolean confirmed = AlertUtils.confirm(
+                getScene().getWindow(),
+                "Membres",
+                "Supprimer le membre \"" + selected.fullName() + "\" ?"
+        );
+        if (!confirmed) {
+            return;
+        }
+        try {
+            memberService.deleteMember(selected.id());
+            refreshMembers();
+            AlertUtils.info(getScene().getWindow(), "Membres", "Membre supprime.");
+        } catch (Exception e) {
+            AlertUtils.error(getScene().getWindow(), "Membres", e.getMessage());
+        }
+    }
+
+    private void refreshMembers() {
         members.setAll(memberService.getAllMembers());
         tableView.refresh();
+        tableSummary.setText("Total membres : " + members.size());
     }
 
     private void clearForm() {
