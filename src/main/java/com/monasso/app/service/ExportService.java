@@ -339,8 +339,9 @@ public class ExportService {
 
     private Path writeCsv(Path directory, String fileName, List<String> headers, List<List<String>> rows) {
         try {
-            Files.createDirectories(directory);
-            Path target = directory.resolve(fileName);
+            Path exportDirectory = requireDirectory(directory, "CSV");
+            Files.createDirectories(exportDirectory);
+            Path target = exportDirectory.resolve(fileName);
             List<String> lines = new ArrayList<>();
             lines.add(csvLine(headers));
             for (List<String> row : rows) {
@@ -355,8 +356,9 @@ public class ExportService {
 
     private Path writeXlsx(Path directory, String fileName, WorkbookConsumer workbookConsumer) {
         try {
-            Files.createDirectories(directory);
-            Path target = directory.resolve(fileName);
+            Path exportDirectory = requireDirectory(directory, "XLSX");
+            Files.createDirectories(exportDirectory);
+            Path target = exportDirectory.resolve(fileName);
             try (Workbook workbook = new XSSFWorkbook(); OutputStream outputStream = Files.newOutputStream(target)) {
                 workbookConsumer.accept(workbook);
                 workbook.write(outputStream);
@@ -369,20 +371,23 @@ public class ExportService {
 
     private Path writePdf(Path directory, String fileName, String reportTitle, List<String> lines) {
         try {
-            Files.createDirectories(directory);
-            Path target = directory.resolve(fileName);
+            Path exportDirectory = requireDirectory(directory, "PDF");
+            Files.createDirectories(exportDirectory);
+            Path target = exportDirectory.resolve(fileName);
             BrandingConfig brandingConfig = brandingService.getCurrentBranding();
             Path logoPath = brandingService.getResolvedLogoPath();
             String appName = brandingConfig.appName() == null || brandingConfig.appName().isBlank()
                     ? "MonAsso"
                     : brandingConfig.appName().trim();
 
-            try (PDDocument document = new PDDocument(); PdfTextWriter writer = new PdfTextWriter(document, appName, logoPath, reportTitle)) {
-                for (String line : lines) {
-                    if (line == null || line.isBlank()) {
-                        writer.writeBlankLine();
-                    } else {
-                        writer.writeLine(line, false);
+            try (PDDocument document = new PDDocument()) {
+                try (PdfTextWriter writer = new PdfTextWriter(document, appName, logoPath, reportTitle)) {
+                    for (String line : lines) {
+                        if (line == null || line.isBlank()) {
+                            writer.writeBlankLine();
+                        } else {
+                            writer.writeLine(line, false);
+                        }
                     }
                 }
                 document.save(target.toFile());
@@ -481,6 +486,13 @@ public class ExportService {
 
     private String defaultValue(String value) {
         return value == null ? "" : value;
+    }
+
+    private Path requireDirectory(Path directory, String exportType) {
+        if (directory == null) {
+            throw new IllegalArgumentException("Le dossier de destination est obligatoire pour l'export " + exportType + ".");
+        }
+        return directory.toAbsolutePath().normalize();
     }
 
     @FunctionalInterface

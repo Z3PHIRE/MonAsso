@@ -8,25 +8,20 @@ public final class AppPaths {
 
     private static final String APP_NAME = "MonAsso";
     private static final Path WORKING_DIR = Paths.get("").toAbsolutePath().normalize();
-    private static final Path APP_HOME = resolveAppHome();
 
     private AppPaths() {
     }
 
-    public static Path projectRoot() {
-        return WORKING_DIR;
-    }
-
     public static Path appHome() {
-        return APP_HOME;
+        return resolveAppHome();
     }
 
     public static Path assetsBrandingDir() {
-        return APP_HOME.resolve("assets").resolve("branding");
+        return appHome().resolve("assets").resolve("branding");
     }
 
     public static Path dataDir() {
-        return APP_HOME.resolve("data");
+        return appHome().resolve("data");
     }
 
     public static Path databasePath() {
@@ -34,11 +29,11 @@ public final class AppPaths {
     }
 
     public static Path exportsDir() {
-        return APP_HOME.resolve("exports");
+        return appHome().resolve("exports");
     }
 
     public static Path backupsDir() {
-        return APP_HOME.resolve("backups");
+        return appHome().resolve("backups");
     }
 
     public static Path brandingJsonPath() {

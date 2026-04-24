@@ -44,7 +44,7 @@ public class MonAssoApplication extends Application {
             Alert alert = new Alert(Alert.AlertType.ERROR);
             alert.setTitle("Erreur de demarrage");
             alert.setHeaderText("MonAsso n'a pas pu demarrer");
-            alert.setContentText(e.getMessage());
+            alert.setContentText(buildStartupErrorMessage(e));
             alert.showAndWait();
         }
     }
@@ -59,5 +59,17 @@ public class MonAssoApplication extends Application {
     private void setStageIcon(Stage stage) {
         Image icon = appContext.brandingService().loadAppIcon();
         stage.getIcons().setAll(icon);
+    }
+
+    private String buildStartupErrorMessage(Throwable error) {
+        Throwable cause = error;
+        while (cause.getCause() != null) {
+            cause = cause.getCause();
+        }
+        String message = cause.getMessage();
+        if (message == null || message.isBlank()) {
+            return "Une erreur technique est survenue au demarrage. Consultez les logs pour plus de details.";
+        }
+        return message;
     }
 }

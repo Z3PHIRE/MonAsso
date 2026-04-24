@@ -1,6 +1,7 @@
 package com.monasso.app.ui.screen;
 
 import com.monasso.app.service.DataSafetyService;
+import com.monasso.app.service.DemoDataService;
 import com.monasso.app.service.SettingsService;
 import com.monasso.app.util.AlertUtils;
 import com.monasso.app.util.DesktopUtils;
@@ -23,6 +24,7 @@ public class SettingsScreen extends VBox {
 
     private final SettingsService settingsService;
     private final DataSafetyService dataSafetyService;
+    private final DemoDataService demoDataService;
     private final Runnable onDataReload;
 
     private final TextField databasePathField = new TextField();
@@ -31,9 +33,15 @@ public class SettingsScreen extends VBox {
     private final TextField selectedBackupField = new TextField();
     private final Label statusLabel = new Label();
 
-    public SettingsScreen(SettingsService settingsService, DataSafetyService dataSafetyService, Runnable onDataReload) {
+    public SettingsScreen(
+            SettingsService settingsService,
+            DataSafetyService dataSafetyService,
+            DemoDataService demoDataService,
+            Runnable onDataReload
+    ) {
         this.settingsService = settingsService;
         this.dataSafetyService = dataSafetyService;
+        this.demoDataService = demoDataService;
         this.onDataReload = onDataReload;
 
         getStyleClass().add("content-root");
@@ -109,13 +117,20 @@ public class SettingsScreen extends VBox {
         openBackupFolder.getStyleClass().add("primary-button");
         openBackupFolder.setOnAction(event -> openBackupDirectory());
 
+        Button loadDemoButton = new Button("Charger donnees de demonstration");
+        loadDemoButton.getStyleClass().add("ghost-button");
+        loadDemoButton.setOnAction(event -> loadDemoData());
+
         HBox row1 = new HBox(10, createBackupButton, openBackupFolder);
         row1.getStyleClass().add("action-row");
 
         HBox row2 = new HBox(10, chooseBackupButton, restoreButton);
         row2.getStyleClass().add("action-row");
 
-        panel.getChildren().addAll(panelTitle, selectedBackupField, row1, row2);
+        HBox row3 = new HBox(10, loadDemoButton);
+        row3.getStyleClass().add("action-row");
+
+        panel.getChildren().addAll(panelTitle, selectedBackupField, row1, row2, row3);
         return panel;
     }
 
@@ -277,6 +292,26 @@ public class SettingsScreen extends VBox {
         dialog.setContentText("Confirmation:");
         Optional<String> value = dialog.showAndWait();
         return value.filter(text -> "RESTAURER".equals(text.trim())).isPresent();
+    }
+
+    private void loadDemoData() {
+        boolean confirmed = AlertUtils.confirm(
+                getScene().getWindow(),
+                "Donnees de demonstration",
+                "Charger un jeu de demonstration ?\nAction reservee a une base vide."
+        );
+        if (!confirmed) {
+            return;
+        }
+
+        try {
+            DemoDataService.DemoDataResult result = demoDataService.loadDemoData();
+            statusLabel.setText("Donnees demo chargees: " + result.members() + " membres, " + result.events() + " evenements, " + result.contributions() + " cotisations.");
+            onDataReload.run();
+            AlertUtils.info(getScene().getWindow(), "Donnees de demonstration", "Jeu de demonstration charge.");
+        } catch (Exception e) {
+            AlertUtils.error(getScene().getWindow(), "Donnees de demonstration", e.getMessage());
+        }
     }
 
     private void savePathSettings() {

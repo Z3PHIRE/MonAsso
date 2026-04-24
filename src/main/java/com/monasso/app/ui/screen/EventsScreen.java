@@ -3,7 +3,6 @@ package com.monasso.app.ui.screen;
 import com.monasso.app.model.Event;
 import com.monasso.app.model.Member;
 import com.monasso.app.service.EventService;
-import com.monasso.app.service.MemberService;
 import com.monasso.app.util.AlertUtils;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -33,7 +32,6 @@ public class EventsScreen extends VBox {
     private static final DateTimeFormatter TIME_DISPLAY = DateTimeFormatter.ofPattern("HH:mm");
 
     private final EventService eventService;
-    private final MemberService memberService;
 
     private final ObservableList<Event> events = FXCollections.observableArrayList();
     private final ObservableList<Member> participants = FXCollections.observableArrayList();
@@ -59,9 +57,8 @@ public class EventsScreen extends VBox {
     private final TableView<Event> eventsTable = createEventsTable();
     private long editingEventId = -1L;
 
-    public EventsScreen(EventService eventService, MemberService memberService) {
+    public EventsScreen(EventService eventService) {
         this.eventService = eventService;
-        this.memberService = memberService;
 
         getStyleClass().add("content-root");
         setPadding(new Insets(20));
