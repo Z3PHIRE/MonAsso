@@ -52,6 +52,9 @@ Tests uniquement:
 .\gradlew.bat test
 ```
 
+Note Windows/OneDrive:
+- les resultats binaires internes de la tache `test` sont ecrits dans `%LOCALAPPDATA%\MonAsso\gradle\test-binary\...` pour reduire les verrous de fichiers intermittents.
+
 Script pratique:
 
 ```powershell

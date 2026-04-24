@@ -59,6 +59,14 @@ test {
     useJUnitPlatform()
 }
 
+def localAppData = System.getenv('LOCALAPPDATA')
+if (localAppData != null && !localAppData.isBlank()) {
+    tasks.named('test', Test) {
+        def projectHash = Integer.toHexString(project.projectDir.absolutePath.hashCode())
+        binaryResultsDirectory = file("${localAppData}/MonAsso/gradle/test-binary/${projectHash}")
+    }
+}
+
 tasks.named('run', JavaExec) {
     workingDir = projectDir
 }
