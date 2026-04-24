@@ -1,8 +1,11 @@
 package com.monasso.app.service;
 
 import com.monasso.app.model.Contribution;
+import com.monasso.app.model.ContributionStatus;
 import com.monasso.app.model.Member;
 import com.monasso.app.repository.ContributionRepository;
+import com.monasso.app.repository.MemberRepository;
+import com.monasso.app.util.ValidationUtils;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -10,39 +13,59 @@ import java.util.List;
 public class ContributionService {
 
     private final ContributionRepository contributionRepository;
+    private final MemberRepository memberRepository;
 
-    public ContributionService(ContributionRepository contributionRepository) {
+    public ContributionService(ContributionRepository contributionRepository, MemberRepository memberRepository) {
         this.contributionRepository = contributionRepository;
+        this.memberRepository = memberRepository;
     }
 
-    public List<Contribution> getAllContributions() {
-        return contributionRepository.findAll();
+    public List<Contribution> getContributions(String searchQuery, String periodLabel, ContributionStatus status) {
+        String effectivePeriod = periodLabel == null || periodLabel.isBlank() ? null : periodLabel.trim();
+        return contributionRepository.findByCriteria(searchQuery, effectivePeriod, status);
     }
 
-    public Contribution addContribution(Member member, double amount, LocalDate date, String paymentMethod, String notes) {
-        if (member == null || member.id() <= 0) {
-            throw new IllegalArgumentException("Un membre valide est obligatoire.");
+    public List<Contribution> getMemberHistory(long memberId) {
+        return contributionRepository.findByMemberId(memberId);
+    }
+
+    public Contribution addContribution(
+            long memberId,
+            double amount,
+            LocalDate contributionDate,
+            String periodLabel,
+            ContributionStatus status,
+            String paymentMethod,
+            String notes
+    ) {
+        Member member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new IllegalArgumentException("Membre introuvable."));
+        if (!member.active()) {
+            throw new IllegalArgumentException("Le membre selectionne est inactif.");
         }
         if (amount <= 0) {
             throw new IllegalArgumentException("Le montant doit etre strictement positif.");
         }
-        if (date == null) {
+        if (contributionDate == null) {
             throw new IllegalArgumentException("La date de cotisation est obligatoire.");
         }
-        Contribution contribution = new Contribution(
+
+        String safePeriod = periodLabel == null || periodLabel.isBlank()
+                ? String.valueOf(contributionDate.getYear())
+                : periodLabel.trim();
+
+        Contribution safeContribution = new Contribution(
                 0L,
                 member.id(),
                 member.fullName(),
                 amount,
-                date,
-                cleanOptional(paymentMethod),
-                cleanOptional(notes)
+                contributionDate,
+                safePeriod,
+                status == null ? ContributionStatus.PAID : status,
+                ValidationUtils.normalizeOptional(paymentMethod),
+                ValidationUtils.normalizeOptional(notes)
         );
-        return contributionRepository.create(contribution);
-    }
-
-    public long countPaidMembersForYear(int year) {
-        return contributionRepository.countDistinctMembersForYear(year);
+        return contributionRepository.create(safeContribution);
     }
 
     public void deleteContribution(long contributionId) {
@@ -51,7 +74,15 @@ public class ContributionService {
         }
     }
 
-    private String cleanOptional(String value) {
-        return value == null || value.isBlank() ? null : value.trim();
+    public long countPaidMembersForPeriod(String periodLabel) {
+        return contributionRepository.countPaidMembersForPeriod(periodLabel);
+    }
+
+    public double totalAmountForPeriod(String periodLabel) {
+        return contributionRepository.totalAmountForPeriod(periodLabel);
+    }
+
+    public String currentPeriod() {
+        return String.valueOf(LocalDate.now().getYear());
     }
 }

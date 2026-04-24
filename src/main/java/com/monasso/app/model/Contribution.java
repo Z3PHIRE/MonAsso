@@ -8,6 +8,8 @@ public record Contribution(
         String memberName,
         double amount,
         LocalDate contributionDate,
+        String periodLabel,
+        ContributionStatus status,
         String paymentMethod,
         String notes
 ) {

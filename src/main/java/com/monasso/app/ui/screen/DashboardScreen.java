@@ -19,13 +19,14 @@ import java.util.Locale;
 public class DashboardScreen extends VBox {
 
     private static final DateTimeFormatter EVENT_DATE_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+    private static final DateTimeFormatter EVENT_TIME_FORMAT = DateTimeFormatter.ofPattern("HH:mm");
 
     private final DashboardService dashboardService;
-    private final StatCard membersCard = new StatCard("Membres", "MB", "0", "Adherents enregistres");
-    private final StatCard eventsCard = new StatCard("Evenements", "EV", "0", "Historique total");
-    private final StatCard paidContributionsCard = new StatCard("Cotisations payees", "OK", "0", "Membres a jour");
-    private final StatCard pendingContributionsCard = new StatCard("Cotisations en attente", "AT", "0", "Relances necessaires");
-    private final StatCard upcomingEventsCard = new StatCard("Prochains evenements", "NX", "0", "Planning a venir");
+    private final StatCard membersCard = new StatCard("Membres", "MB", "0", "Membres actifs : 0");
+    private final StatCard eventsCard = new StatCard("Evenements", "EV", "0", "Planning general");
+    private final StatCard paidContributionsCard = new StatCard("Cotisations payees", "OK", "0", "Paye");
+    private final StatCard pendingContributionsCard = new StatCard("Cotisations en attente", "AT", "0", "Relances");
+    private final StatCard upcomingEventsCard = new StatCard("Prochains evenements", "NX", "0", "A venir");
 
     private final VBox upcomingEventsList = new VBox(8);
     private final Label totalCollectedLabel = new Label();
@@ -42,7 +43,7 @@ public class DashboardScreen extends VBox {
         Label title = new Label("Tableau de bord");
         title.getStyleClass().add("screen-title");
 
-        Label subtitle = new Label("Vue visuelle des indicateurs de l'association (cotisations calculees sur l'annee en cours).");
+        Label subtitle = new Label("Indicateurs reels de l'association, relies a SQLite.");
         subtitle.getStyleClass().add("screen-subtitle");
         subtitle.setWrapText(true);
 
@@ -67,7 +68,7 @@ public class DashboardScreen extends VBox {
 
         VBox contributionPanel = new VBox(10);
         contributionPanel.getStyleClass().add("panel-card");
-        Label contributionTitle = new Label("Indicateur de collecte");
+        Label contributionTitle = new Label("Collecte sur la periode courante");
         contributionTitle.getStyleClass().add("section-label");
         totalCollectedLabel.getStyleClass().add("screen-subtitle");
         progressLabel.getStyleClass().add("muted-text");
@@ -96,25 +97,31 @@ public class DashboardScreen extends VBox {
         DashboardMetrics metrics = dashboardService.getMetrics();
 
         membersCard.setValue(String.valueOf(metrics.totalMembers()));
+        membersCard.setHelperText("Membres actifs : " + metrics.activeMembers());
+
         eventsCard.setValue(String.valueOf(metrics.totalEvents()));
+        eventsCard.setHelperText(metrics.upcomingEventsCount() + " evenements a venir");
+
         paidContributionsCard.setValue(String.valueOf(metrics.paidContributions()));
+        paidContributionsCard.setHelperText("Periode " + metrics.currentPeriod());
+
         pendingContributionsCard.setValue(String.valueOf(metrics.pendingContributions()));
+        pendingContributionsCard.setHelperText(metrics.pendingContributions() == 0 ? "Aucune relance" : "Relances necessaires");
+
         upcomingEventsCard.setValue(String.valueOf(metrics.upcomingEventsCount()));
+        upcomingEventsCard.setHelperText("Calendrier des prochaines dates");
 
-        membersCard.setHelperText(metrics.totalMembers() == 0 ? "Commencez par ajouter un membre." : "Base active");
-        paidContributionsCard.setHelperText("Annee " + java.time.LocalDate.now().getYear());
-        pendingContributionsCard.setHelperText(metrics.pendingContributions() == 0 ? "Aucune relance." : "A relancer rapidement");
-        upcomingEventsCard.setHelperText(metrics.upcomingEventsCount() == 0 ? "Aucun evenement futur" : "Dates deja planifiees");
+        totalCollectedLabel.setText(String.format(Locale.FRANCE, "Montant collecte (%s) : %.2f EUR",
+                metrics.currentPeriod(),
+                metrics.totalContributionAmount()));
 
-        totalCollectedLabel.setText(String.format(Locale.FRANCE, "Montant collecte : %.2f EUR", metrics.totalContributionAmount()));
-
-        double ratio = metrics.totalMembers() == 0 ? 0 : (double) metrics.paidContributions() / metrics.totalMembers();
+        double ratio = metrics.activeMembers() == 0 ? 0 : (double) metrics.paidContributions() / metrics.activeMembers();
         contributionProgressBar.setProgress(Math.min(Math.max(ratio, 0), 1));
         progressLabel.setText(String.format(Locale.FRANCE,
-                "Couverture cotisations: %.0f%% (%d/%d membres)",
+                "Couverture cotisations: %.0f%% (%d/%d membres actifs)",
                 ratio * 100,
                 metrics.paidContributions(),
-                metrics.totalMembers()));
+                metrics.activeMembers()));
 
         refreshUpcomingEvents(metrics);
     }
@@ -136,11 +143,12 @@ public class DashboardScreen extends VBox {
             dateLabel.getStyleClass().add("event-date-chip");
 
             VBox details = new VBox(2);
-            Label nameLabel = new Label(event.name());
+            Label nameLabel = new Label(event.title() + " - " + EVENT_TIME_FORMAT.format(event.eventTime()));
             nameLabel.getStyleClass().add("event-name");
 
             String location = event.location() == null || event.location().isBlank() ? "Lieu non renseigne" : event.location();
-            Label locationLabel = new Label(location);
+            String capacityInfo = event.capacity() == null ? "capacite libre" : event.participantCount() + "/" + event.capacity() + " participants";
+            Label locationLabel = new Label(location + " | " + capacityInfo);
             locationLabel.getStyleClass().add("muted-text");
             details.getChildren().addAll(nameLabel, locationLabel);
 

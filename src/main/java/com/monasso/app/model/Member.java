@@ -8,9 +8,16 @@ public record Member(
         String lastName,
         String email,
         String phone,
-        LocalDate joinDate
+        String address,
+        LocalDate joinDate,
+        boolean active,
+        String notes
 ) {
     public String fullName() {
         return (firstName + " " + lastName).trim();
+    }
+
+    public String statusLabel() {
+        return active ? "Actif" : "Inactif";
     }
 }

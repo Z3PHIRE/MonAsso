@@ -149,7 +149,7 @@ public class MainView {
     private void configureNavigation() {
         navigationManager.register(ScreenId.DASHBOARD, () -> new DashboardScreen(appContext.dashboardService()));
         navigationManager.register(ScreenId.MEMBERS, () -> new MembersScreen(appContext.memberService()));
-        navigationManager.register(ScreenId.EVENTS, () -> new EventsScreen(appContext.eventService()));
+        navigationManager.register(ScreenId.EVENTS, () -> new EventsScreen(appContext.eventService(), appContext.memberService()));
         navigationManager.register(ScreenId.CONTRIBUTIONS, () -> new ContributionsScreen(appContext.contributionService(), appContext.memberService()));
         navigationManager.register(ScreenId.EXPORTS, () -> new ExportsScreen(appContext.exportService(), appContext.settingsService()));
         navigationManager.register(ScreenId.SETTINGS, () -> new SettingsScreen(appContext.settingsService()));

@@ -1,12 +1,16 @@
 package com.monasso.app.model;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 
 public record Event(
         long id,
-        String name,
+        String title,
         LocalDate eventDate,
+        LocalTime eventTime,
         String location,
-        String description
+        String description,
+        Integer capacity,
+        int participantCount
 ) {
 }

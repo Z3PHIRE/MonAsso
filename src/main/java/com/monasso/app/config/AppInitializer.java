@@ -3,6 +3,7 @@ package com.monasso.app.config;
 import com.monasso.app.repository.AppSettingsRepository;
 import com.monasso.app.repository.ContributionRepository;
 import com.monasso.app.repository.DatabaseManager;
+import com.monasso.app.repository.EventParticipantRepository;
 import com.monasso.app.repository.EventRepository;
 import com.monasso.app.repository.MemberRepository;
 import com.monasso.app.repository.SchemaInitializer;
@@ -32,12 +33,13 @@ public class AppInitializer {
 
         MemberRepository memberRepository = new MemberRepository(databaseManager);
         EventRepository eventRepository = new EventRepository(databaseManager);
+        EventParticipantRepository eventParticipantRepository = new EventParticipantRepository(databaseManager);
         ContributionRepository contributionRepository = new ContributionRepository(databaseManager);
         AppSettingsRepository appSettingsRepository = new AppSettingsRepository(databaseManager);
 
         MemberService memberService = new MemberService(memberRepository);
-        EventService eventService = new EventService(eventRepository);
-        ContributionService contributionService = new ContributionService(contributionRepository);
+        EventService eventService = new EventService(eventRepository, eventParticipantRepository, memberRepository);
+        ContributionService contributionService = new ContributionService(contributionRepository, memberRepository);
         SettingsService settingsService = new SettingsService(appSettingsRepository);
         DashboardService dashboardService = new DashboardService(memberRepository, eventRepository, contributionRepository);
         ExportService exportService = new ExportService(memberRepository, eventRepository, contributionRepository);

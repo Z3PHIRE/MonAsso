@@ -20,19 +20,25 @@ public class DashboardService {
     }
 
     public DashboardMetrics getMetrics() {
-        long totalMembers = memberRepository.count();
-        long totalEvents = eventRepository.count();
-        long paidContributions = contributionRepository.countDistinctMembersForYear(LocalDate.now().getYear());
-        long pendingContributions = Math.max(totalMembers - paidContributions, 0);
+        String currentPeriod = String.valueOf(LocalDate.now().getYear());
+
+        long totalMembers = memberRepository.countAll();
+        long activeMembers = memberRepository.countActive();
+        long totalEvents = eventRepository.countAll();
+        long paidContributions = contributionRepository.countPaidMembersForPeriod(currentPeriod);
+        long pendingContributions = Math.max(activeMembers - paidContributions, 0);
         long upcomingEventsCount = eventRepository.countUpcoming(LocalDate.now());
+        double totalContributionAmount = contributionRepository.totalAmountForPeriod(currentPeriod);
 
         return new DashboardMetrics(
                 totalMembers,
+                activeMembers,
                 totalEvents,
                 paidContributions,
                 pendingContributions,
                 upcomingEventsCount,
-                contributionRepository.totalAmount(),
+                totalContributionAmount,
+                currentPeriod,
                 eventRepository.findUpcoming(LocalDate.now(), 5)
         );
     }

@@ -15,6 +15,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 public class ExportService {
 
@@ -33,15 +34,18 @@ public class ExportService {
     public Path exportMembers(Path directory) {
         String filename = "members_" + FILE_SUFFIX.format(LocalDateTime.now()) + ".csv";
         List<String> rows = new ArrayList<>();
-        rows.add("id;first_name;last_name;email;phone;join_date");
-        for (Member member : memberRepository.findAll()) {
+        rows.add("id;first_name;last_name;email;phone;address;join_date;status;notes");
+        for (Member member : memberRepository.findByCriteria("", null)) {
             rows.add(String.join(";",
                     String.valueOf(member.id()),
                     safe(member.firstName()),
                     safe(member.lastName()),
                     safe(member.email()),
                     safe(member.phone()),
-                    member.joinDate().toString()
+                    safe(member.address()),
+                    member.joinDate().toString(),
+                    member.statusLabel(),
+                    safe(member.notes())
             ));
         }
         return writeCsv(directory, filename, rows);
@@ -50,14 +54,17 @@ public class ExportService {
     public Path exportEvents(Path directory) {
         String filename = "events_" + FILE_SUFFIX.format(LocalDateTime.now()) + ".csv";
         List<String> rows = new ArrayList<>();
-        rows.add("id;name;event_date;location;description");
-        for (Event event : eventRepository.findAll()) {
+        rows.add("id;title;event_date;event_time;location;description;capacity;participant_count");
+        for (Event event : eventRepository.findByCriteria("", false)) {
             rows.add(String.join(";",
                     String.valueOf(event.id()),
-                    safe(event.name()),
+                    safe(event.title()),
                     event.eventDate().toString(),
+                    event.eventTime().toString(),
                     safe(event.location()),
-                    safe(event.description())
+                    safe(event.description()),
+                    event.capacity() == null ? "" : String.valueOf(event.capacity()),
+                    String.valueOf(event.participantCount())
             ));
         }
         return writeCsv(directory, filename, rows);
@@ -66,14 +73,16 @@ public class ExportService {
     public Path exportContributions(Path directory) {
         String filename = "contributions_" + FILE_SUFFIX.format(LocalDateTime.now()) + ".csv";
         List<String> rows = new ArrayList<>();
-        rows.add("id;member_id;member_name;amount;contribution_date;payment_method;notes");
-        for (Contribution contribution : contributionRepository.findAll()) {
+        rows.add("id;member_id;member_name;amount;contribution_date;period;status;payment_method;notes");
+        for (Contribution contribution : contributionRepository.findByCriteria("", null, null)) {
             rows.add(String.join(";",
                     String.valueOf(contribution.id()),
                     String.valueOf(contribution.memberId()),
                     safe(contribution.memberName()),
-                    String.valueOf(contribution.amount()),
+                    String.format(Locale.US, "%.2f", contribution.amount()),
                     contribution.contributionDate().toString(),
+                    safe(contribution.periodLabel()),
+                    contribution.status().name(),
                     safe(contribution.paymentMethod()),
                     safe(contribution.notes())
             ));
