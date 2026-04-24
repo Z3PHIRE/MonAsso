@@ -12,6 +12,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
@@ -43,6 +44,8 @@ public class BrandingService {
         try {
             Files.createDirectories(brandingDirectory);
             ensureBrandingConfigExists();
+            ensureBrandingAssetExists("logo.png");
+            ensureBrandingAssetExists("icon.png");
             reload();
         } catch (IOException e) {
             throw new IllegalStateException("Impossible d'initialiser la configuration de branding.", e);
@@ -116,6 +119,20 @@ public class BrandingService {
     private void ensureBrandingConfigExists() throws IOException {
         if (!Files.exists(brandingFile)) {
             objectMapper.writeValue(brandingFile.toFile(), BrandingConfig.defaults());
+        }
+    }
+
+    private void ensureBrandingAssetExists(String assetFileName) throws IOException {
+        Path target = brandingDirectory.resolve(assetFileName);
+        if (Files.exists(target)) {
+            return;
+        }
+        try (InputStream input = BrandingService.class.getResourceAsStream("/default-branding/" + assetFileName)) {
+            if (input == null) {
+                LOGGER.warn("Ressource par defaut introuvable: {}", assetFileName);
+                return;
+            }
+            Files.copy(input, target, StandardCopyOption.REPLACE_EXISTING);
         }
     }
 

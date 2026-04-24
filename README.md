@@ -1,76 +1,113 @@
 # MonAsso
 
-Application desktop JavaFX locale pour la gestion d'associations.
+Application desktop JavaFX locale pour la gestion d'associations (Java 21, Gradle, SQLite).
 
 ## Prerequis
 
-- Windows 10/11 (priorite actuelle)
-- JDK 21+ installe (`java -version`)
-- Le projet compile en `--release 21` (Java 21 cible)
-- Internet au premier build pour recuperer les dependances Gradle
-- Wrapper Gradle fourni (`gradle 9.4.1`)
+- Windows 10/11 (priorite actuelle).
+- JDK 21 installe (`java -version`).
+- Internet au premier build (telechargement dependances Gradle).
+- Pour un installateur `.exe` via `jpackage`: outils Windows disponibles selon votre JDK (WiX requis sur certaines distributions JDK).
 
-## Lancer l'application
+## Lancer en developpement
 
-```bash
-./gradlew run
-```
-
-Sous Windows PowerShell:
+PowerShell:
 
 ```powershell
 .\gradlew.bat run
 ```
 
-## Build
+ou script pratique:
 
-```bash
-./gradlew build
+```powershell
+.\scripts\run-local.ps1
 ```
 
-## Navigation incluse
+## Build standard
 
-- Tableau de bord
-- Membres
-- Evenements
-- Cotisations
-- Exports
-- Parametres
-- Personnalisation
+PowerShell:
 
-## Generation d'executable (jpackage)
-
-Image native:
-
-```bash
-./gradlew packageApp
+```powershell
+.\gradlew.bat build
 ```
 
-Installeur natif (selon OS):
+ou script pratique:
 
-```bash
-./gradlew packageInstaller
+```powershell
+.\scripts\build.ps1
 ```
+
+## Packaging Windows
+
+Commande recommandee (jar executable + runtime image Windows, sans dependance WiX):
+
+```powershell
+.\gradlew.bat prepareExecutableJar packageWindows
+```
+
+ou script pratique:
+
+```powershell
+.\scripts\package-windows.ps1
+```
+
+Installateur `.exe` optionnel:
+
+```powershell
+.\gradlew.bat packageInstaller
+```
+
+Cette commande requiert WiX Toolset dans le `PATH`.
+
+### Artefacts produits
+
+- Jar executable + dependances:
+  - `build/executable/MonAsso.jar`
+  - `build/executable/lib/*.jar`
+  - `build/executable/run-monasso.bat`
+- Runtime image Windows (jpackage):
+  - `build/windows-image/`
+- Installateur Windows (si `packageInstaller` execute avec WiX):
+  - `build/windows-installer/`
+
+## Taches Gradle utiles
+
+- `run` : lance l'application localement.
+- `build` : compile + tests.
+- `prepareExecutableJar` : prepare le jar executable et son dossier `lib`.
+- `packageWindowsImage` : genere l'image applicative Windows (runtime inclus).
+- `packageWindows` : alias simple vers `packageWindowsImage`.
+- `packageInstaller` : genere un installateur `.exe` (WiX requis).
+
+## Icone jpackage
+
+- Si `assets/branding/icon.ico` existe, elle est utilisee automatiquement pour `jpackage`.
+- Sinon, jpackage utilise l'icone par defaut.
+- L'icone applicative dans l'UI reste geree par `assets/branding/icon.png`.
+
+## Emplacements de donnees
+
+MonAsso utilise un dossier applicatif unique:
+
+- En developpement (depuis le projet): racine du repository.
+- En mode installe Windows: `%LOCALAPPDATA%\MonAsso`.
+
+Sous ce dossier:
+
+- Base SQLite: `data/monasso.db`
+- Exports: `exports/`
+- Sauvegardes: `backups/`
+- Branding editable: `assets/branding/`
+
+Override possible:
+
+- Proprieté JVM `-Dmonasso.home=<chemin>` pour forcer un dossier applicatif personnalise.
 
 ## Structure du projet
 
-- `assets/branding` : branding modifiable (`logo.png`, `icon.png`, `branding.json`)
-- `data` : base SQLite locale (`monasso.db`)
-- `exports` : dossier d'exports CSV/XLSX/PDF par defaut
-- `backups` : dossier de sauvegardes par defaut
-- `src/main/java/com/monasso/app/config` : configuration, branding, theme
-- `src/main/java/com/monasso/app/model` : modeles metier
-- `src/main/java/com/monasso/app/repository` : acces SQLite
-- `src/main/java/com/monasso/app/service` : logique applicative
-- `src/main/java/com/monasso/app/ui` : vues JavaFX et navigation
-- `src/main/java/com/monasso/app/util` : utilitaires
-
-## Choix mineurs documentes
-
-- La base SQLite est creee automatiquement dans `data/monasso.db`.
-- Le branding est charge depuis `assets/branding/branding.json` puis applique dynamiquement a l'UI.
-- L'ecran Personnalisation permet de modifier nom, couleurs et logo sans toucher au code.
-- Les exports sont generes en CSV local (pas de cloud, pas de service externe).
-- Les exports supportent CSV, XLSX (Apache POI) et PDF (PDFBox), avec nommage horodate.
-- Les chemins `exports` et `backups` sont configurables depuis l'ecran Parametres.
-- Les sauvegardes/restaurations de la base SQLite se pilotent depuis l'ecran Parametres, avec confirmation forte a la restauration.
+- `src/main/java/com/monasso/app/config` : initialisation, paths, theme, branding.
+- `src/main/java/com/monasso/app/model` : modeles metier.
+- `src/main/java/com/monasso/app/repository` : acces SQLite.
+- `src/main/java/com/monasso/app/service` : logique metier et exports/backups.
+- `src/main/java/com/monasso/app/ui` : vues JavaFX et navigation.
+- `assets/branding` : branding editable (logo, icone, branding.json).

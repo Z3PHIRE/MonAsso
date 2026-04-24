@@ -2,11 +2,13 @@ plugins {
     id 'java'
     id 'application'
     id 'org.openjfx.javafxplugin' version '0.1.0'
-    id 'org.beryx.jlink' version '3.1.1'
 }
 
 group = 'com.monasso'
 version = '0.1.0'
+
+def windowsIconFile = file('assets/branding/icon.ico')
+def executableDir = layout.buildDirectory.dir('executable')
 
 repositories {
     mavenCentral()
@@ -43,6 +45,16 @@ application {
     mainClass = 'com.monasso.app.MonAssoApplication'
 }
 
+tasks.named('jar', Jar) {
+    archiveBaseName = 'MonAsso'
+    manifest {
+        attributes(
+                'Main-Class': application.mainClass.get(),
+                'Class-Path': configurations.runtimeClasspath.files.collect { "lib/${it.name}" }.join(' ')
+        )
+    }
+}
+
 test {
     useJUnitPlatform()
 }
@@ -51,29 +63,129 @@ tasks.named('run', JavaExec) {
     workingDir = projectDir
 }
 
-jlink {
-    options = ['--strip-debug', '--compress', '2', '--no-header-files', '--no-man-pages']
-    launcher {
-        name = 'MonAsso'
-        jvmArgs = ['-Dfile.encoding=UTF-8']
+tasks.register('copyRuntimeLibs', Copy) {
+    group = 'distribution'
+    description = 'Copies runtime dependencies next to executable jar.'
+    from configurations.runtimeClasspath
+    into executableDir.map { it.dir('lib') }
+}
+
+tasks.register('prepareExecutableJar', Copy) {
+    group = 'distribution'
+    description = 'Prepares runnable jar with lib directory and launch scripts.'
+    dependsOn tasks.named('jar'), tasks.named('copyRuntimeLibs')
+    from(tasks.named('jar')) {
+        rename { 'MonAsso.jar' }
     }
-    jpackage {
-        imageName = 'MonAsso'
-        installerName = 'MonAsso'
-        appVersion = project.version.toString()
-        vendor = 'MonAsso'
-        installerOptions = ['--win-menu', '--win-shortcut']
+    into executableDir
+    doLast {
+        def runBat = executableDir.get().file('run-monasso.bat').asFile
+        runBat.text = """@echo off
+set SCRIPT_DIR=%~dp0
+java -jar "%SCRIPT_DIR%MonAsso.jar" %*
+"""
+        def runPs1 = executableDir.get().file('run-monasso.ps1').asFile
+        runPs1.text = """param([Parameter(ValueFromRemainingArguments=\$true)][string[]]\$Args)
+\$scriptDir = Split-Path -Parent \$MyInvocation.MyCommand.Path
+& java -jar (Join-Path \$scriptDir 'MonAsso.jar') @Args
+"""
+    }
+}
+
+def windowsImageDir = layout.buildDirectory.dir('windows-image')
+def windowsInstallerDir = layout.buildDirectory.dir('windows-installer')
+def jpackageInputDir = layout.buildDirectory.dir('jpackage-input')
+def isWindowsHost = System.getProperty('os.name').toLowerCase().contains('windows')
+
+tasks.register('prepareJpackageInput', Copy) {
+    group = 'distribution'
+    description = 'Prepares input directory used by jpackage.'
+    dependsOn tasks.named('prepareExecutableJar')
+    from(executableDir) {
+        include 'MonAsso.jar'
+    }
+    from(executableDir.map { it.dir('lib') }) {
+        into 'lib'
+    }
+    into jpackageInputDir
+}
+
+tasks.register('packageWindowsImage', Exec) {
+    group = 'distribution'
+    description = 'Builds Windows app-image via jpackage (bundled runtime).'
+    dependsOn tasks.named('prepareJpackageInput')
+    onlyIf { isWindowsHost }
+    doFirst {
+        def destination = windowsImageDir.get().asFile
+        destination.mkdirs()
+        def outputAppDir = new File(destination, 'MonAsso')
+        if (outputAppDir.exists()) {
+            outputAppDir.deleteDir()
+        }
+
+        def command = [
+                'jpackage',
+                '--type', 'app-image',
+                '--name', 'MonAsso',
+                '--dest', destination.absolutePath,
+                '--input', jpackageInputDir.get().asFile.absolutePath,
+                '--main-jar', 'MonAsso.jar',
+                '--main-class', application.mainClass.get(),
+                '--app-version', project.version.toString(),
+                '--vendor', 'MonAsso',
+                '--java-options', '-Dfile.encoding=UTF-8'
+        ]
+        if (windowsIconFile.exists()) {
+            command += ['--icon', windowsIconFile.absolutePath]
+        }
+        commandLine command
+    }
+}
+
+tasks.register('packageWindowsInstaller', Exec) {
+    group = 'distribution'
+    description = 'Builds Windows installer (.exe) via jpackage.'
+    dependsOn tasks.named('prepareJpackageInput')
+    onlyIf { isWindowsHost }
+    doFirst {
+        def destination = windowsInstallerDir.get().asFile
+        destination.mkdirs()
+        def command = [
+                'jpackage',
+                '--type', 'exe',
+                '--name', 'MonAsso',
+                '--dest', destination.absolutePath,
+                '--input', jpackageInputDir.get().asFile.absolutePath,
+                '--main-jar', 'MonAsso.jar',
+                '--main-class', application.mainClass.get(),
+                '--app-version', project.version.toString(),
+                '--vendor', 'MonAsso',
+                '--java-options', '-Dfile.encoding=UTF-8',
+                '--win-menu',
+                '--win-shortcut',
+                '--win-dir-chooser'
+        ]
+        if (windowsIconFile.exists()) {
+            command += ['--icon', windowsIconFile.absolutePath]
+        }
+        commandLine command
     }
 }
 
 tasks.register('packageApp') {
     group = 'distribution'
-    description = 'Builds a native image with jpackage via jlink plugin.'
-    dependsOn tasks.named('jpackageImage')
+    description = 'Builds a native Windows app-image with bundled runtime.'
+    dependsOn tasks.named('packageWindowsImage')
 }
 
 tasks.register('packageInstaller') {
     group = 'distribution'
-    description = 'Builds a native installer via jpackage (platform dependent).'
-    dependsOn tasks.named('jpackage')
+    description = 'Builds a native Windows installer (.exe) via jpackage.'
+    dependsOn tasks.named('packageWindowsInstaller')
+}
+
+tasks.register('packageWindows') {
+    group = 'distribution'
+    description = 'Builds Windows app-image (runtime included, no WiX needed).'
+    dependsOn tasks.named('packageWindowsImage')
 }
