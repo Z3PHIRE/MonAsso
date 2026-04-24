@@ -1,0 +1,17 @@
+.gradle/
+.gradle-user/
+build/
+out/
+bin/
+*.iml
+*.ipr
+*.iws
+.idea/
+.vscode/
+hs_err_pid*
+replay_pid*
+data/*.db
+data/*.db-journal
+data/*.db-wal
+data/*.db-shm
+dist/

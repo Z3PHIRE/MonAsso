@@ -1,0 +1,159 @@
+.root {
+    -app-primary: #1f4a7d;
+    -app-secondary: #f4f7fb;
+    -app-accent: #ff8c42;
+    -fx-font-family: "Segoe UI";
+    -fx-background-color: -app-secondary;
+}
+
+.app-root {
+    -fx-background-color: -app-secondary;
+}
+
+.top-bar {
+    -fx-padding: 12 18 12 18;
+    -fx-background-color: white;
+    -fx-border-color: #dce3ee;
+    -fx-border-width: 0 0 1 0;
+    -fx-alignment: center-left;
+    -fx-spacing: 12;
+}
+
+.app-title {
+    -fx-font-size: 22px;
+    -fx-font-weight: 700;
+    -fx-text-fill: -app-primary;
+}
+
+.sidebar {
+    -fx-background-color: linear-gradient(to bottom, derive(-app-primary, 5%), derive(-app-primary, -12%));
+    -fx-padding: 16;
+    -fx-spacing: 10;
+    -fx-pref-width: 250;
+}
+
+.sidebar-logo {
+    -fx-background-color: rgba(255, 255, 255, 0.18);
+    -fx-background-radius: 12;
+    -fx-padding: 12;
+}
+
+.nav-button {
+    -fx-background-color: transparent;
+    -fx-text-fill: white;
+    -fx-font-size: 14px;
+    -fx-font-weight: 600;
+    -fx-alignment: center-left;
+    -fx-padding: 12 14 12 14;
+    -fx-background-radius: 10;
+    -fx-cursor: hand;
+}
+
+.nav-button:hover {
+    -fx-background-color: rgba(255, 255, 255, 0.17);
+}
+
+.nav-button-active {
+    -fx-background-color: rgba(255, 255, 255, 0.28);
+}
+
+.content-root {
+    -fx-padding: 20;
+    -fx-spacing: 16;
+}
+
+.screen-title {
+    -fx-font-size: 24px;
+    -fx-font-weight: 700;
+    -fx-text-fill: -app-primary;
+}
+
+.screen-subtitle {
+    -fx-font-size: 14px;
+    -fx-text-fill: #5f6b7a;
+}
+
+.panel-card {
+    -fx-background-color: white;
+    -fx-background-radius: 14;
+    -fx-border-color: #dce3ee;
+    -fx-border-radius: 14;
+    -fx-padding: 16;
+}
+
+.stat-card {
+    -fx-background-color: white;
+    -fx-background-radius: 12;
+    -fx-border-color: #dce3ee;
+    -fx-border-radius: 12;
+    -fx-padding: 14;
+    -fx-min-width: 220;
+}
+
+.stat-title {
+    -fx-font-size: 13px;
+    -fx-text-fill: #5f6b7a;
+}
+
+.stat-value {
+    -fx-font-size: 26px;
+    -fx-font-weight: 700;
+    -fx-text-fill: -app-primary;
+}
+
+.primary-button {
+    -fx-background-color: -app-primary;
+    -fx-text-fill: white;
+    -fx-font-weight: 600;
+    -fx-background-radius: 10;
+    -fx-padding: 10 14 10 14;
+    -fx-cursor: hand;
+}
+
+.primary-button:hover {
+    -fx-background-color: derive(-app-primary, 15%);
+}
+
+.accent-button {
+    -fx-background-color: -app-accent;
+    -fx-text-fill: white;
+    -fx-font-weight: 700;
+    -fx-background-radius: 10;
+    -fx-padding: 10 14 10 14;
+    -fx-cursor: hand;
+}
+
+.accent-button:hover {
+    -fx-background-color: derive(-app-accent, 10%);
+}
+
+.ghost-button {
+    -fx-background-color: #edf1f7;
+    -fx-text-fill: #2b3c52;
+    -fx-font-weight: 600;
+    -fx-background-radius: 10;
+    -fx-padding: 10 14 10 14;
+    -fx-cursor: hand;
+}
+
+.table-view {
+    -fx-border-color: #dce3ee;
+    -fx-border-radius: 12;
+    -fx-background-radius: 12;
+}
+
+.form-grid {
+    -fx-hgap: 10;
+    -fx-vgap: 10;
+}
+
+.section-label {
+    -fx-font-size: 16px;
+    -fx-font-weight: 700;
+    -fx-text-fill: -app-primary;
+}
+
+.muted-text {
+    -fx-font-size: 12px;
+    -fx-text-fill: #6f7d8f;
+}
