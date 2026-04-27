@@ -8,6 +8,7 @@ import com.monasso.app.ui.navigation.NavigationManager;
 import com.monasso.app.ui.navigation.ScreenId;
 import com.monasso.app.ui.screen.ContributionsScreen;
 import com.monasso.app.ui.screen.CalendarScreen;
+import com.monasso.app.ui.screen.DailyUseScreen;
 import com.monasso.app.ui.screen.DashboardScreen;
 import com.monasso.app.ui.screen.DocumentsScreen;
 import com.monasso.app.ui.screen.EventsScreen;
@@ -18,6 +19,7 @@ import com.monasso.app.ui.screen.MembersScreen;
 import com.monasso.app.ui.screen.PersonalizationScreen;
 import com.monasso.app.ui.screen.SettingsScreen;
 import com.monasso.app.ui.screen.TasksScreen;
+import com.monasso.app.ui.screen.WelcomeScreen;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Parent;
@@ -43,6 +45,8 @@ import java.util.Map;
 public class MainView {
 
     private static final Map<ScreenId, String> SCREEN_PICTOGRAMS = Map.ofEntries(
+            Map.entry(ScreenId.WELCOME, "BI"),
+            Map.entry(ScreenId.DAILY_USE, "QD"),
             Map.entry(ScreenId.DASHBOARD, "DB"),
             Map.entry(ScreenId.SEARCH, "SR"),
             Map.entry(ScreenId.CALENDAR, "CL"),
@@ -57,6 +61,7 @@ public class MainView {
             Map.entry(ScreenId.PERSONALIZATION, "TH")
     );
     private static final List<ScreenId> PRIMARY_SCREENS = Arrays.asList(
+            ScreenId.DAILY_USE,
             ScreenId.DASHBOARD,
             ScreenId.SEARCH,
             ScreenId.CALENDAR,
@@ -98,7 +103,7 @@ public class MainView {
         refreshBranding(appContext.brandingService());
         appContext.brandingService().brandingProperty().addListener((obs, oldConfig, newConfig) -> refreshBranding(appContext.brandingService()));
 
-        navigationManager.navigate(ScreenId.DASHBOARD);
+        navigationManager.navigate(ScreenId.DAILY_USE);
     }
 
     public Parent getRoot() {
@@ -129,11 +134,15 @@ public class MainView {
 
         MenuButton moreOptions = new MenuButton("Plus d'options");
         moreOptions.getStyleClass().add("ghost-button");
+        MenuItem welcomeItem = new MenuItem("Bienvenue / Guide rapide");
+        welcomeItem.setOnAction(event -> navigationManager.navigate(ScreenId.WELCOME));
+        MenuItem dailyUseItem = new MenuItem("Utilisation quotidienne");
+        dailyUseItem.setOnAction(event -> navigationManager.navigate(ScreenId.DAILY_USE));
         MenuItem settingsItem = new MenuItem("Parametres");
         settingsItem.setOnAction(event -> navigationManager.navigate(ScreenId.SETTINGS));
         MenuItem personalizationItem = new MenuItem("Personnalisation");
         personalizationItem.setOnAction(event -> navigationManager.navigate(ScreenId.PERSONALIZATION));
-        moreOptions.getItems().addAll(settingsItem, personalizationItem);
+        moreOptions.getItems().addAll(welcomeItem, dailyUseItem, settingsItem, personalizationItem);
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
@@ -192,6 +201,16 @@ public class MainView {
     }
 
     private void configureNavigation() {
+        navigationManager.register(ScreenId.WELCOME, () -> new WelcomeScreen(appContext.dashboardService(), this::onWelcomeAction));
+        navigationManager.register(
+                ScreenId.DAILY_USE,
+                () -> new DailyUseScreen(
+                        appContext.dashboardService(),
+                        appContext.taskService(),
+                        appContext.eventService(),
+                        this::onDailyUseAction
+                )
+        );
         navigationManager.register(ScreenId.DASHBOARD, () -> new DashboardScreen(appContext.dashboardService(), this::onDashboardAction));
         navigationManager.register(ScreenId.SEARCH, () -> new GlobalSearchScreen(appContext.globalSearchService(), this::onSearchOpen));
         navigationManager.register(
@@ -279,6 +298,30 @@ public class MainView {
             case CREATE_MEETING -> navigationManager.navigate(ScreenId.MEETINGS);
             case RECORD_CONTRIBUTION -> navigationManager.navigate(ScreenId.CONTRIBUTIONS);
             case EXPORT_DATA -> navigationManager.navigate(ScreenId.EXPORTS);
+        }
+    }
+
+    private void onWelcomeAction(WelcomeScreen.WelcomeAction action) {
+        switch (action) {
+            case OPEN_MEMBERS -> navigationManager.navigate(ScreenId.MEMBERS);
+            case OPEN_EVENTS -> navigationManager.navigate(ScreenId.EVENTS);
+            case OPEN_MEETINGS -> navigationManager.navigate(ScreenId.MEETINGS);
+            case OPEN_TASKS -> navigationManager.navigate(ScreenId.TASKS);
+            case OPEN_DOCUMENTS -> navigationManager.navigate(ScreenId.DOCUMENTS);
+            case OPEN_CALENDAR -> navigationManager.navigate(ScreenId.CALENDAR);
+            case OPEN_DASHBOARD -> navigationManager.navigate(ScreenId.DASHBOARD);
+        }
+    }
+
+    private void onDailyUseAction(DailyUseScreen.DailyAction action) {
+        switch (action) {
+            case CREATE_EVENT, OPEN_EVENTS -> navigationManager.navigate(ScreenId.EVENTS);
+            case CREATE_TASK, OPEN_TASKS -> navigationManager.navigate(ScreenId.TASKS);
+            case ADD_PERSON, OPEN_MEMBERS -> navigationManager.navigate(ScreenId.MEMBERS);
+            case OPEN_DASHBOARD -> navigationManager.navigate(ScreenId.DASHBOARD);
+            case OPEN_CALENDAR -> navigationManager.navigate(ScreenId.CALENDAR);
+            case OPEN_MEETINGS -> navigationManager.navigate(ScreenId.MEETINGS);
+            case OPEN_DOCUMENTS -> navigationManager.navigate(ScreenId.DOCUMENTS);
         }
     }
 

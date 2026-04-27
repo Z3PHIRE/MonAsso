@@ -41,6 +41,22 @@ import java.util.Locale;
 
 public class TasksScreen extends VBox {
 
+    private enum DisplayMode {
+        COMPACT("Compact"),
+        DETAILED("Detaille");
+
+        private final String label;
+
+        DisplayMode(String label) {
+            this.label = label;
+        }
+
+        @Override
+        public String toString() {
+            return label;
+        }
+    }
+
     private record MemberFilter(Long memberId, String label) {
         @Override
         public String toString() {
@@ -74,6 +90,7 @@ public class TasksScreen extends VBox {
     private final ObservableList<RefOption> meetingOptions = FXCollections.observableArrayList();
 
     private final TextField searchField = new TextField();
+    private final ComboBox<DisplayMode> displayModeCombo = new ComboBox<>();
     private final ComboBox<MemberFilter> assigneeFilterCombo = new ComboBox<>();
     private final TextField dueDateFilterField = new TextField();
     private final ComboBox<StatusFilter> statusFilterCombo = new ComboBox<>();
@@ -90,6 +107,11 @@ public class TasksScreen extends VBox {
     private final TextArea notesArea = new TextArea();
 
     private final TableView<TaskItem> tasksTable = createTasksTable();
+    private TableColumn<TaskItem, Number> idColumn;
+    private TableColumn<TaskItem, String> linkColumn;
+    private TableColumn<TaskItem, String> assigneeColumn;
+    private TableColumn<TaskItem, String> priorityColumn;
+    private TitledPane formPane;
 
     private long editingTaskId = -1L;
 
@@ -115,16 +137,24 @@ public class TasksScreen extends VBox {
         subtitle.getStyleClass().add("screen-subtitle");
         subtitle.setWrapText(true);
 
+        displayModeCombo.getItems().setAll(DisplayMode.values());
+        displayModeCombo.getSelectionModel().select(DisplayMode.COMPACT);
+        displayModeCombo.valueProperty().addListener((obs, oldValue, newValue) -> applyDisplayMode());
+
+        HBox modeRow = new HBox(10, new Label("Mode"), displayModeCombo);
+        modeRow.getStyleClass().add("action-row");
+
         summaryLabel.getStyleClass().add("muted-text");
         VBox.setVgrow(tasksTable, Priority.ALWAYS);
 
-        TitledPane formPane = new TitledPane("Fiche tache", createFormPanel());
+        formPane = new TitledPane("Fiche tache", createFormPanel());
         formPane.getStyleClass().add("folded-panel");
-        formPane.setExpanded(true);
+        formPane.setExpanded(false);
 
         getChildren().addAll(
                 title,
                 subtitle,
+                modeRow,
                 createFilterPanel(),
                 summaryLabel,
                 tasksTable,
@@ -134,6 +164,7 @@ public class TasksScreen extends VBox {
         configureFilters();
         loadReferenceData();
         refreshTasks();
+        applyDisplayMode();
     }
 
     private VBox createFilterPanel() {
@@ -277,7 +308,7 @@ public class TasksScreen extends VBox {
         table.getStyleClass().add("app-table");
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
 
-        TableColumn<TaskItem, Number> idColumn = new TableColumn<>("ID");
+        idColumn = new TableColumn<>("ID");
         idColumn.setCellValueFactory(cell -> new SimpleLongProperty(cell.getValue().id()));
         idColumn.setPrefWidth(60);
 
@@ -285,11 +316,11 @@ public class TasksScreen extends VBox {
         titleColumn.setCellValueFactory(cell -> new SimpleStringProperty(cell.getValue().title()));
         titleColumn.setPrefWidth(220);
 
-        TableColumn<TaskItem, String> linkColumn = new TableColumn<>("Lien");
+        linkColumn = new TableColumn<>("Lien");
         linkColumn.setCellValueFactory(cell -> new SimpleStringProperty(defaultValue(cell.getValue().linkedLabel())));
         linkColumn.setPrefWidth(170);
 
-        TableColumn<TaskItem, String> assigneeColumn = new TableColumn<>("Responsable");
+        assigneeColumn = new TableColumn<>("Responsable");
         assigneeColumn.setCellValueFactory(cell -> new SimpleStringProperty(defaultValue(cell.getValue().assigneeName())));
         assigneeColumn.setPrefWidth(150);
 
@@ -297,7 +328,7 @@ public class TasksScreen extends VBox {
         dueDateColumn.setCellValueFactory(cell -> new SimpleStringProperty(cell.getValue().dueDate() == null ? "" : cell.getValue().dueDate().toString()));
         dueDateColumn.setPrefWidth(120);
 
-        TableColumn<TaskItem, String> priorityColumn = new TableColumn<>("Priorite");
+        priorityColumn = new TableColumn<>("Priorite");
         priorityColumn.setCellValueFactory(cell -> new SimpleStringProperty(cell.getValue().priority().label()));
         priorityColumn.setPrefWidth(100);
 
@@ -484,6 +515,9 @@ public class TasksScreen extends VBox {
         }
 
         refreshLinkInputsState();
+        if (formPane != null) {
+            formPane.setExpanded(true);
+        }
     }
 
     private void clearForm() {
@@ -529,6 +563,27 @@ public class TasksScreen extends VBox {
 
     private Long selectedId(RefOption option) {
         return option == null ? null : option.id();
+    }
+
+    private void applyDisplayMode() {
+        DisplayMode mode = displayModeCombo.getValue() == null ? DisplayMode.COMPACT : displayModeCombo.getValue();
+        boolean detailed = mode == DisplayMode.DETAILED;
+
+        if (idColumn != null) {
+            idColumn.setVisible(detailed);
+        }
+        if (linkColumn != null) {
+            linkColumn.setVisible(detailed);
+        }
+        if (assigneeColumn != null) {
+            assigneeColumn.setVisible(detailed);
+        }
+        if (priorityColumn != null) {
+            priorityColumn.setVisible(detailed);
+        }
+        if (formPane != null) {
+            formPane.setExpanded(detailed);
+        }
     }
 
     private String defaultValue(String value) {

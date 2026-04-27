@@ -26,6 +26,8 @@ import javafx.scene.control.MenuItem;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableRow;
 import javafx.scene.control.TableView;
+import javafx.scene.control.Tab;
+import javafx.scene.control.TabPane;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import javafx.scene.control.TitledPane;
@@ -45,6 +47,22 @@ public class MeetingsScreen extends VBox {
 
     private static final DateTimeFormatter TIME_DISPLAY = DateTimeFormatter.ofPattern("HH:mm");
 
+    private enum DisplayMode {
+        COMPACT("Compact"),
+        DETAILED("Detaille");
+
+        private final String label;
+
+        DisplayMode(String label) {
+            this.label = label;
+        }
+
+        @Override
+        public String toString() {
+            return label;
+        }
+    }
+
     private final MeetingService meetingService;
     private final MemberService memberService;
     private final ChecklistService checklistService;
@@ -59,6 +77,7 @@ public class MeetingsScreen extends VBox {
     private final TextField searchField = new TextField();
     private final CheckBox upcomingOnlyCheck = new CheckBox("Afficher uniquement les reunions a venir");
     private final ComboBox<ArchiveFilter> archiveFilterCombo = new ComboBox<>();
+    private final ComboBox<DisplayMode> displayModeCombo = new ComboBox<>();
     private final Label tableSummary = new Label();
 
     private final TextField titleField = new TextField();
@@ -73,6 +92,7 @@ public class MeetingsScreen extends VBox {
     private final TextArea linkedDocumentsArea = new TextArea();
     private final TextArea agendaArea = new TextArea();
     private final TextArea notesArea = new TextArea();
+    private final TextArea documentsPreviewArea = new TextArea();
 
     private final Label detailTitle = new Label("Aucune reunion selectionnee");
     private final Label detailMeta = new Label();
@@ -84,6 +104,11 @@ public class MeetingsScreen extends VBox {
     private final TableView<Meeting> meetingsTable = createMeetingsTable();
     private final TableView<Member> participantsTable = createParticipantsTable();
     private final ListView<ChecklistItem> checklistListView = createChecklistListView();
+    private TableColumn<Meeting, Number> idColumn;
+    private TableColumn<Meeting, String> responsibleColumn;
+    private TableColumn<Meeting, Number> participantsColumn;
+    private TableColumn<Meeting, String> archivedColumn;
+    private TitledPane detailPane;
 
     private long editingMeetingId = -1L;
 
@@ -103,20 +128,28 @@ public class MeetingsScreen extends VBox {
         subtitle.getStyleClass().add("screen-subtitle");
         subtitle.setWrapText(true);
 
+        displayModeCombo.getItems().setAll(DisplayMode.values());
+        displayModeCombo.getSelectionModel().select(DisplayMode.COMPACT);
+        displayModeCombo.valueProperty().addListener((obs, oldValue, newValue) -> applyDisplayMode());
+
+        HBox modeRow = new HBox(10, new Label("Mode"), displayModeCombo);
+        modeRow.getStyleClass().add("action-row");
+
         VBox.setVgrow(meetingsTable, Priority.ALWAYS);
         tableSummary.getStyleClass().add("muted-text");
 
         TitledPane formPane = new TitledPane("Fiche reunion", createMeetingFormPanel());
         formPane.getStyleClass().add("folded-panel");
-        formPane.setExpanded(false);
+        formPane.setExpanded(true);
 
-        TitledPane detailPane = new TitledPane("Detail, participants et checklist", createDetailPanel());
+        detailPane = new TitledPane("Detail reunion", createDetailPanel());
         detailPane.getStyleClass().add("folded-panel");
         detailPane.setExpanded(true);
 
         getChildren().addAll(
                 title,
                 subtitle,
+                modeRow,
                 createFilterPanel(),
                 tableSummary,
                 meetingsTable,
@@ -127,6 +160,7 @@ public class MeetingsScreen extends VBox {
         loadActiveMembers();
         refreshChecklistCategories();
         refreshMeetings();
+        applyDisplayMode();
     }
 
     private VBox createFilterPanel() {
@@ -198,8 +232,6 @@ public class MeetingsScreen extends VBox {
         statusCombo.getSelectionModel().select(ScheduleStatus.PLANNED);
 
         categoryField.setPromptText("Categorie");
-        linkedDocumentsArea.setPromptText("Documents lies");
-        linkedDocumentsArea.setPrefRowCount(2);
         agendaArea.setPromptText("Ordre du jour");
         agendaArea.setPrefRowCount(2);
         notesArea.setPromptText("Notes");
@@ -225,12 +257,10 @@ public class MeetingsScreen extends VBox {
         grid.add(statusCombo, 3, 3);
         grid.add(new Label("Categorie"), 0, 4);
         grid.add(categoryField, 1, 4);
-        grid.add(new Label("Documents"), 2, 4);
-        grid.add(linkedDocumentsArea, 3, 4);
-        grid.add(new Label("Ordre du jour"), 0, 5);
-        grid.add(agendaArea, 1, 5, 3, 1);
-        grid.add(new Label("Notes"), 0, 6);
-        grid.add(notesArea, 1, 6, 3, 1);
+
+        TitledPane advancedPane = new TitledPane("Informations avancees", createAdvancedMeetingPanel());
+        advancedPane.getStyleClass().add("folded-panel");
+        advancedPane.setExpanded(false);
 
         Button createButton = new Button("Creer reunion");
         createButton.getStyleClass().add("accent-button");
@@ -257,7 +287,22 @@ public class MeetingsScreen extends VBox {
         HBox actions = new HBox(10, createButton, updateButton, archiveButton, moreButton);
         actions.getStyleClass().add("action-row");
 
-        panel.getChildren().addAll(section, grid, actions);
+        panel.getChildren().addAll(section, grid, advancedPane, actions);
+        return panel;
+    }
+
+    private VBox createAdvancedMeetingPanel() {
+        VBox panel = new VBox(10);
+        panel.getStyleClass().add("panel-card");
+
+        GridPane grid = new GridPane();
+        grid.getStyleClass().add("form-grid");
+        grid.add(new Label("Ordre du jour"), 0, 0);
+        grid.add(agendaArea, 1, 0, 3, 1);
+        grid.add(new Label("Notes"), 0, 1);
+        grid.add(notesArea, 1, 1, 3, 1);
+
+        panel.getChildren().add(grid);
         return panel;
     }
 
@@ -269,6 +314,23 @@ public class MeetingsScreen extends VBox {
         section.getStyleClass().add("section-label");
         detailTitle.getStyleClass().add("event-name");
         detailMeta.getStyleClass().add("muted-text");
+
+        TabPane tabPane = new TabPane();
+        tabPane.getStyleClass().add("light-tabs");
+
+        Tab followUpTab = new Tab("Suivi", createFollowUpTab());
+        followUpTab.setClosable(false);
+        Tab documentsTab = new Tab("Documents", createDocumentsTab());
+        documentsTab.setClosable(false);
+        tabPane.getTabs().addAll(followUpTab, documentsTab);
+
+        panel.getChildren().addAll(section, detailTitle, detailMeta, tabPane);
+        return panel;
+    }
+
+    private VBox createFollowUpTab() {
+        VBox panel = new VBox(10);
+        panel.getStyleClass().add("panel-card");
 
         participantSearchField.setPromptText("Filtrer les participants");
         participantSearchField.setOnAction(event -> refreshParticipants());
@@ -330,9 +392,6 @@ public class MeetingsScreen extends VBox {
         HBox.setHgrow(checklistItemField, Priority.ALWAYS);
 
         panel.getChildren().addAll(
-                section,
-                detailTitle,
-                detailMeta,
                 participantSearchRow,
                 participantActionRow,
                 participantsTable,
@@ -343,12 +402,42 @@ public class MeetingsScreen extends VBox {
         return panel;
     }
 
+    private VBox createDocumentsTab() {
+        VBox panel = new VBox(10);
+        panel.getStyleClass().add("panel-card");
+
+        Label info = new Label("Documents lies a la reunion (chemins ou references locales).");
+        info.getStyleClass().add("muted-text");
+        info.setWrapText(true);
+
+        linkedDocumentsArea.setPromptText("Documents lies");
+        linkedDocumentsArea.setPrefRowCount(3);
+        documentsPreviewArea.setEditable(false);
+        documentsPreviewArea.setWrapText(true);
+        documentsPreviewArea.setPromptText("Apercu des documents de la reunion selectionnee");
+        documentsPreviewArea.setPrefRowCount(3);
+
+        Button applyButton = new Button("Appliquer les documents");
+        applyButton.getStyleClass().add("primary-button");
+        applyButton.setOnAction(event -> updateMeeting());
+
+        panel.getChildren().addAll(
+                info,
+                new Label("Edition"),
+                linkedDocumentsArea,
+                applyButton,
+                new Label("Apercu"),
+                documentsPreviewArea
+        );
+        return panel;
+    }
+
     private TableView<Meeting> createMeetingsTable() {
         TableView<Meeting> table = new TableView<>(meetings);
         table.getStyleClass().add("app-table");
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
 
-        TableColumn<Meeting, Number> idColumn = new TableColumn<>("ID");
+        idColumn = new TableColumn<>("ID");
         idColumn.setCellValueFactory(cell -> new javafx.beans.property.SimpleLongProperty(cell.getValue().id()));
         idColumn.setPrefWidth(60);
 
@@ -370,15 +459,15 @@ public class MeetingsScreen extends VBox {
         statusColumn.setCellValueFactory(cell -> new javafx.beans.property.SimpleStringProperty(cell.getValue().statusLabel()));
         statusColumn.setPrefWidth(110);
 
-        TableColumn<Meeting, String> responsibleColumn = new TableColumn<>("Responsable");
+        responsibleColumn = new TableColumn<>("Responsable");
         responsibleColumn.setCellValueFactory(cell -> new javafx.beans.property.SimpleStringProperty(defaultValue(cell.getValue().responsibleName())));
         responsibleColumn.setPrefWidth(150);
 
-        TableColumn<Meeting, Number> participantsColumn = new TableColumn<>("Participants");
+        participantsColumn = new TableColumn<>("Participants");
         participantsColumn.setCellValueFactory(cell -> new javafx.beans.property.SimpleIntegerProperty(cell.getValue().participantCount()));
         participantsColumn.setPrefWidth(100);
 
-        TableColumn<Meeting, String> archivedColumn = new TableColumn<>("Archive");
+        archivedColumn = new TableColumn<>("Archive");
         archivedColumn.setCellValueFactory(cell -> new javafx.beans.property.SimpleStringProperty(cell.getValue().archived() ? "Oui" : "Non"));
         archivedColumn.setPrefWidth(90);
 
@@ -656,6 +745,7 @@ public class MeetingsScreen extends VBox {
                         + " | responsable: " + responsible
                         + " | participants: " + latest.participantCount()
         );
+        documentsPreviewArea.setText(defaultValue(latest.linkedDocuments()));
         refreshParticipants();
         refreshChecklist();
     }
@@ -800,9 +890,31 @@ public class MeetingsScreen extends VBox {
     private void clearDetail() {
         detailTitle.setText("Aucune reunion selectionnee");
         detailMeta.setText("");
+        documentsPreviewArea.clear();
         participants.clear();
         availableParticipants.clear();
         checklistItems.clear();
+    }
+
+    private void applyDisplayMode() {
+        DisplayMode mode = displayModeCombo.getValue() == null ? DisplayMode.COMPACT : displayModeCombo.getValue();
+        boolean detailed = mode == DisplayMode.DETAILED;
+
+        if (idColumn != null) {
+            idColumn.setVisible(detailed);
+        }
+        if (responsibleColumn != null) {
+            responsibleColumn.setVisible(detailed);
+        }
+        if (participantsColumn != null) {
+            participantsColumn.setVisible(detailed);
+        }
+        if (archivedColumn != null) {
+            archivedColumn.setVisible(detailed);
+        }
+        if (detailPane != null) {
+            detailPane.setExpanded(detailed);
+        }
     }
 
     private LocalDate parseDate(String rawValue) {

@@ -67,6 +67,22 @@ public class EventsScreen extends VBox {
 
     private static final DateTimeFormatter TIME_DISPLAY = DateTimeFormatter.ofPattern("HH:mm");
 
+    private enum DisplayMode {
+        COMPACT("Compact"),
+        DETAILED("Detaille");
+
+        private final String label;
+
+        DisplayMode(String label) {
+            this.label = label;
+        }
+
+        @Override
+        public String toString() {
+            return label;
+        }
+    }
+
     private final EventService eventService;
     private final EventTrackingService eventTrackingService;
     private final MemberService memberService;
@@ -88,6 +104,7 @@ public class EventsScreen extends VBox {
     private final TextField searchField = new TextField();
     private final CheckBox upcomingOnlyCheck = new CheckBox("Afficher uniquement les evenements a venir");
     private final ComboBox<ArchiveFilter> archiveFilterCombo = new ComboBox<>();
+    private final ComboBox<DisplayMode> displayModeCombo = new ComboBox<>();
     private final Label tableSummary = new Label();
 
     private final TextField titleField = new TextField();
@@ -153,6 +170,11 @@ public class EventsScreen extends VBox {
     private final Map<Long, CustomCategory> categoryById = new LinkedHashMap<>();
 
     private final TableView<Event> eventsTable = createEventsTable();
+    private TableColumn<Event, Number> idColumn;
+    private TableColumn<Event, String> responsibleColumn;
+    private TableColumn<Event, String> categoryColumn;
+    private TableColumn<Event, String> capacityColumn;
+    private TableColumn<Event, String> archivedColumn;
     private long editingEventId = -1L;
 
     public EventsScreen(
@@ -179,6 +201,13 @@ public class EventsScreen extends VBox {
         subtitle.getStyleClass().add("screen-subtitle");
         subtitle.setWrapText(true);
 
+        displayModeCombo.getItems().setAll(DisplayMode.values());
+        displayModeCombo.getSelectionModel().select(DisplayMode.COMPACT);
+        displayModeCombo.valueProperty().addListener((obs, oldValue, newValue) -> applyDisplayMode());
+
+        HBox modeRow = new HBox(10, new Label("Mode"), displayModeCombo);
+        modeRow.getStyleClass().add("action-row");
+
         tableSummary.getStyleClass().add("muted-text");
         detailTitle.getStyleClass().add("event-name");
         detailMeta.getStyleClass().add("muted-text");
@@ -202,6 +231,7 @@ public class EventsScreen extends VBox {
         getChildren().addAll(
                 title,
                 subtitle,
+                modeRow,
                 createFilterPanel(),
                 tableSummary,
                 eventsTable,
@@ -213,6 +243,7 @@ public class EventsScreen extends VBox {
         refreshChecklistCategories();
         refreshCategoryDefinitions();
         refreshEvents();
+        applyDisplayMode();
     }
 
     private VBox createFilterPanel() {
@@ -385,13 +416,16 @@ public class EventsScreen extends VBox {
         Tab followUpTab = new Tab("Suivi", createFollowUpTab());
         followUpTab.setClosable(false);
 
+        Tab documentsTab = new Tab("Documents", createDocumentsPanel());
+        documentsTab.setClosable(false);
+
         Tab checklistTab = new Tab("Checklist", createChecklistTab());
         checklistTab.setClosable(false);
 
         Tab categoriesTab = new Tab("Categories", createCategoriesTab());
         categoriesTab.setClosable(false);
 
-        tabPane.getTabs().addAll(participantsTab, followUpTab, checklistTab, categoriesTab);
+        tabPane.getTabs().addAll(participantsTab, followUpTab, documentsTab, checklistTab, categoriesTab);
 
         panel.getChildren().addAll(section, detailTitle, detailMeta, tabPane);
         return panel;
@@ -463,15 +497,11 @@ public class EventsScreen extends VBox {
         tasksPane.getStyleClass().add("folded-panel");
         tasksPane.setExpanded(true);
 
-        TitledPane documentsPane = new TitledPane("Documents lies", createDocumentsPanel());
-        documentsPane.getStyleClass().add("folded-panel");
-        documentsPane.setExpanded(false);
-
         TitledPane historyPane = new TitledPane("Historique des modifications", createHistoryPanel());
         historyPane.getStyleClass().add("folded-panel");
         historyPane.setExpanded(false);
 
-        Accordion accordion = new Accordion(budgetPane, tasksPane, documentsPane, historyPane);
+        Accordion accordion = new Accordion(budgetPane, tasksPane, historyPane);
         accordion.setExpandedPane(budgetPane);
 
         VBox.setVgrow(accordion, Priority.ALWAYS);
@@ -675,7 +705,7 @@ public class EventsScreen extends VBox {
         table.getStyleClass().add("app-table");
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
 
-        TableColumn<Event, Number> idColumn = new TableColumn<>("ID");
+        idColumn = new TableColumn<>("ID");
         idColumn.setCellValueFactory(cell -> new javafx.beans.property.SimpleLongProperty(cell.getValue().id()));
         idColumn.setPrefWidth(60);
 
@@ -697,15 +727,15 @@ public class EventsScreen extends VBox {
         statusColumn.setCellValueFactory(cell -> new javafx.beans.property.SimpleStringProperty(cell.getValue().statusLabel()));
         statusColumn.setPrefWidth(110);
 
-        TableColumn<Event, String> responsibleColumn = new TableColumn<>("Responsable");
+        responsibleColumn = new TableColumn<>("Responsable");
         responsibleColumn.setCellValueFactory(cell -> new javafx.beans.property.SimpleStringProperty(defaultValue(cell.getValue().responsibleName())));
         responsibleColumn.setPrefWidth(150);
 
-        TableColumn<Event, String> categoryColumn = new TableColumn<>("Categorie");
+        categoryColumn = new TableColumn<>("Categorie");
         categoryColumn.setCellValueFactory(cell -> new javafx.beans.property.SimpleStringProperty(defaultValue(cell.getValue().category())));
         categoryColumn.setPrefWidth(120);
 
-        TableColumn<Event, String> capacityColumn = new TableColumn<>("Capacite");
+        capacityColumn = new TableColumn<>("Capacite");
         capacityColumn.setCellValueFactory(cell -> {
             Event event = cell.getValue();
             String value = event.capacity() == null
@@ -715,7 +745,7 @@ public class EventsScreen extends VBox {
         });
         capacityColumn.setPrefWidth(120);
 
-        TableColumn<Event, String> archivedColumn = new TableColumn<>("Archive");
+        archivedColumn = new TableColumn<>("Archive");
         archivedColumn.setCellValueFactory(cell -> new javafx.beans.property.SimpleStringProperty(cell.getValue().archived() ? "Oui" : "Non"));
         archivedColumn.setPrefWidth(90);
 
@@ -1764,6 +1794,27 @@ public class EventsScreen extends VBox {
 
     private String formatAmount(double amount) {
         return String.format(Locale.FRANCE, "%.2f", amount);
+    }
+
+    private void applyDisplayMode() {
+        DisplayMode mode = displayModeCombo.getValue() == null ? DisplayMode.COMPACT : displayModeCombo.getValue();
+        boolean detailed = mode == DisplayMode.DETAILED;
+
+        if (idColumn != null) {
+            idColumn.setVisible(detailed);
+        }
+        if (responsibleColumn != null) {
+            responsibleColumn.setVisible(detailed);
+        }
+        if (categoryColumn != null) {
+            categoryColumn.setVisible(detailed);
+        }
+        if (capacityColumn != null) {
+            capacityColumn.setVisible(detailed);
+        }
+        if (archivedColumn != null) {
+            archivedColumn.setVisible(detailed);
+        }
     }
 
     private String defaultValue(String value) {

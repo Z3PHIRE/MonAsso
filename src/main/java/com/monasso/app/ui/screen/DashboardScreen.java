@@ -1,16 +1,17 @@
 package com.monasso.app.ui.screen;
 
-import com.monasso.app.model.ContributionReminder;
 import com.monasso.app.model.DashboardMetrics;
 import com.monasso.app.model.DashboardScheduleItem;
 import com.monasso.app.model.DashboardTaskItem;
 import com.monasso.app.service.DashboardService;
 import javafx.geometry.Insets;
+import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 
+import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Locale;
@@ -29,15 +30,31 @@ public class DashboardScreen extends VBox {
         EXPORT_DATA
     }
 
+    private enum DisplayMode {
+        COMPACT("Compact"),
+        DETAILED("Detaille");
+
+        private final String label;
+
+        DisplayMode(String label) {
+            this.label = label;
+        }
+
+        @Override
+        public String toString() {
+            return label;
+        }
+    }
+
     private final DashboardService dashboardService;
     @SuppressWarnings("unused")
     private final Consumer<QuickAction> quickActionHandler;
+    private final ComboBox<DisplayMode> displayModeCombo = new ComboBox<>();
 
     private final VBox todayList = new VBox(6);
-    private final VBox upcomingList = new VBox(6);
+    private final VBox weekList = new VBox(6);
     private final VBox urgentTasksList = new VBox(6);
-    private final VBox remindersList = new VBox(6);
-    private final VBox eventsToMonitorList = new VBox(6);
+    private final VBox upcomingEventsList = new VBox(6);
     private final VBox nearbyMeetingsList = new VBox(6);
 
     public DashboardScreen(DashboardService dashboardService, Consumer<QuickAction> quickActionHandler) {
@@ -51,27 +68,33 @@ public class DashboardScreen extends VBox {
         Label title = new Label("Tableau de bord");
         title.getStyleClass().add("screen-title");
 
-        Label subtitle = new Label("Vue quotidienne: aujourd'hui, a venir, urgences, relances et points de suivi.");
+        Label subtitle = new Label("Vue quotidienne epuree: aujourd'hui, semaine, urgences, prochains evenements et prochaines reunions.");
         subtitle.getStyleClass().add("screen-subtitle");
         subtitle.setWrapText(true);
+
+        displayModeCombo.getItems().setAll(DisplayMode.values());
+        displayModeCombo.getSelectionModel().select(DisplayMode.COMPACT);
+        displayModeCombo.valueProperty().addListener((obs, oldValue, newValue) -> refreshMetrics());
+
+        HBox modeRow = new HBox(10, new Label("Mode"), displayModeCombo);
+        modeRow.getStyleClass().add("action-row");
 
         HBox firstRow = new HBox(
                 12,
                 createWidget("Aujourd'hui", "Elements du jour", todayList),
-                createWidget("A venir", "Prochains 14 jours", upcomingList),
+                createWidget("Cette semaine", "Prochains 7 jours", weekList),
                 createWidget("Taches urgentes", "Echeances sur 7 jours", urgentTasksList)
         );
         firstRow.getStyleClass().add("action-row");
 
         HBox secondRow = new HBox(
                 12,
-                createWidget("Cotisations a relancer", "Membres actifs non regles", remindersList),
-                createWidget("Evenements a surveiller", "Prochains evenements", eventsToMonitorList),
+                createWidget("Prochains evenements", "Evenements a surveiller", upcomingEventsList),
                 createWidget("Reunions proches", "Prochaines reunions", nearbyMeetingsList)
         );
         secondRow.getStyleClass().add("action-row");
 
-        getChildren().addAll(title, subtitle, firstRow, secondRow);
+        getChildren().addAll(title, subtitle, modeRow, firstRow, secondRow);
         refreshMetrics();
     }
 
@@ -94,12 +117,16 @@ public class DashboardScreen extends VBox {
 
     private void refreshMetrics() {
         DashboardMetrics metrics = dashboardService.getMetrics();
+        LocalDate weekLimit = LocalDate.now().plusDays(7);
+        List<DashboardScheduleItem> weeklyItems = metrics.upcomingItems()
+                .stream()
+                .filter(item -> !item.date().isAfter(weekLimit))
+                .toList();
 
         renderScheduleList(todayList, metrics.todayItems(), "Aucun element aujourd'hui.");
-        renderScheduleList(upcomingList, metrics.upcomingItems(), "Aucun element a venir.");
+        renderScheduleList(weekList, weeklyItems, "Aucun element cette semaine.");
         renderTaskList(urgentTasksList, metrics.urgentTaskItems(), "Aucune tache urgente.");
-        renderContributionList(remindersList, metrics.contributionReminders(), "Aucune relance necessaire.");
-        renderScheduleList(eventsToMonitorList, metrics.eventsToMonitor(), "Aucun evenement a surveiller.");
+        renderScheduleList(upcomingEventsList, metrics.eventsToMonitor(), "Aucun evenement a surveiller.");
         renderScheduleList(nearbyMeetingsList, metrics.nearbyMeetingItems(), "Aucune reunion proche.");
     }
 
@@ -112,13 +139,14 @@ public class DashboardScreen extends VBox {
             return;
         }
 
-        int max = Math.min(items.size(), 6);
+        int max = Math.min(items.size(), currentMode() == DisplayMode.COMPACT ? 4 : 8);
         for (int i = 0; i < max; i++) {
             DashboardScheduleItem item = items.get(i);
             String start = item.startTime() == null ? "--:--" : TIME_FORMAT.format(item.startTime());
             String end = item.endTime() == null ? "--:--" : TIME_FORMAT.format(item.endTime());
-            String label = item.type().label()
-                    + " | "
+            String label = "["
+                    + item.type().label()
+                    + "] "
                     + DATE_FORMAT.format(item.date())
                     + " "
                     + start
@@ -145,7 +173,7 @@ public class DashboardScreen extends VBox {
             return;
         }
 
-        int max = Math.min(items.size(), 8);
+        int max = Math.min(items.size(), currentMode() == DisplayMode.COMPACT ? 5 : 10);
         for (int i = 0; i < max; i++) {
             DashboardTaskItem item = items.get(i);
             String due = item.dueDate() == null ? "Sans echeance" : item.dueDate().toString();
@@ -167,23 +195,8 @@ public class DashboardScreen extends VBox {
         }
     }
 
-    private void renderContributionList(VBox target, List<ContributionReminder> items, String emptyText) {
-        target.getChildren().clear();
-        if (items == null || items.isEmpty()) {
-            Label empty = new Label(emptyText);
-            empty.getStyleClass().add("muted-text");
-            target.getChildren().add(empty);
-            return;
-        }
-
-        int max = Math.min(items.size(), 8);
-        for (int i = 0; i < max; i++) {
-            ContributionReminder item = items.get(i);
-            String email = item.email() == null || item.email().isBlank() ? "sans email" : item.email();
-            Label line = new Label(item.memberName() + " | " + email);
-            line.getStyleClass().add("screen-subtitle");
-            line.setWrapText(true);
-            target.getChildren().add(line);
-        }
+    private DisplayMode currentMode() {
+        DisplayMode mode = displayModeCombo.getValue();
+        return mode == null ? DisplayMode.COMPACT : mode;
     }
 }

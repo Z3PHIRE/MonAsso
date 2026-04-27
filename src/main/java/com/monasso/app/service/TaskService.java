@@ -51,6 +51,16 @@ public class TaskService {
         return taskRepository.findUrgent(safeFrom, safeTo, limit);
     }
 
+    public List<TaskItem> getOverdueTasks(int limit) {
+        int safeLimit = limit <= 0 ? 5 : limit;
+        LocalDate yesterday = LocalDate.now().minusDays(1);
+        return taskRepository.findByCriteria("", null, yesterday, null)
+                .stream()
+                .filter(task -> task.status() != TaskStatus.DONE)
+                .limit(safeLimit)
+                .toList();
+    }
+
     public TaskItem getTask(long taskId) {
         return taskRepository.findById(taskId)
                 .orElseThrow(() -> new IllegalStateException("Tache introuvable."));

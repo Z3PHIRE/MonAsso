@@ -24,6 +24,8 @@ import javafx.scene.control.MenuItem;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableRow;
 import javafx.scene.control.TableView;
+import javafx.scene.control.Tab;
+import javafx.scene.control.TabPane;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import javafx.scene.control.TextInputControl;
@@ -41,12 +43,29 @@ import java.util.Map;
 
 public class MembersScreen extends VBox {
 
+    private enum DisplayMode {
+        COMPACT("Compact"),
+        DETAILED("Detaille");
+
+        private final String label;
+
+        DisplayMode(String label) {
+            this.label = label;
+        }
+
+        @Override
+        public String toString() {
+            return label;
+        }
+    }
+
     private final MemberService memberService;
     private final CustomCategoryService customCategoryService;
     private final ObservableList<Member> members = FXCollections.observableArrayList();
 
     private final TextField searchField = new TextField();
     private final ComboBox<MemberStatusFilter> statusFilterCombo = new ComboBox<>();
+    private final ComboBox<DisplayMode> displayModeCombo = new ComboBox<>();
     private final Label tableSummary = new Label();
 
     private final TextField firstNameField = new TextField();
@@ -73,6 +92,10 @@ public class MembersScreen extends VBox {
     private List<CustomCategory> personCategories = List.of();
 
     private final TableView<Member> tableView = createTable();
+    private TableColumn<Member, Number> idColumn;
+    private TableColumn<Member, String> phoneColumn;
+    private TableColumn<Member, String> emailColumn;
+    private TableColumn<Member, String> roleColumn;
     private long editingMemberId = -1L;
 
     public MembersScreen(MemberService memberService, CustomCategoryService customCategoryService) {
@@ -90,22 +113,31 @@ public class MembersScreen extends VBox {
         subtitle.getStyleClass().add("screen-subtitle");
         subtitle.setWrapText(true);
 
+        displayModeCombo.getItems().setAll(DisplayMode.values());
+        displayModeCombo.getSelectionModel().select(DisplayMode.COMPACT);
+        displayModeCombo.valueProperty().addListener((obs, oldValue, newValue) -> applyDisplayMode());
+
+        HBox modeRow = new HBox(10, new Label("Mode"), displayModeCombo);
+        modeRow.getStyleClass().add("action-row");
+
         VBox.setVgrow(tableView, Priority.ALWAYS);
         tableSummary.getStyleClass().add("muted-text");
 
         TitledPane formPane = new TitledPane("Fiche personne", createFormPanel());
         formPane.getStyleClass().add("folded-panel");
-        formPane.setExpanded(false);
+        formPane.setExpanded(true);
 
         getChildren().addAll(
                 title,
                 subtitle,
+                modeRow,
                 createFilterPanel(),
                 tableSummary,
                 tableView,
                 formPane
         );
         refreshMembers();
+        applyDisplayMode();
     }
 
     private VBox createFilterPanel() {
@@ -185,6 +217,33 @@ public class MembersScreen extends VBox {
         customCategoriesPane.getStyleClass().add("folded-panel");
         customCategoriesPane.setExpanded(false);
 
+        TabPane tabs = new TabPane();
+        tabs.getStyleClass().add("light-tabs");
+
+        Tab followUpTab = new Tab("Suivi");
+        followUpTab.setClosable(false);
+        VBox followUpContent = new VBox(10);
+        followUpContent.getStyleClass().add("panel-card");
+        Label followUpHint = new Label("Suivi de la personne: categories personnalisables et informations de contexte.");
+        followUpHint.getStyleClass().add("muted-text");
+        followUpHint.setWrapText(true);
+        followUpContent.getChildren().addAll(followUpHint, customCategoriesPane);
+        followUpTab.setContent(followUpContent);
+
+        Tab documentsTab = new Tab("Documents");
+        documentsTab.setClosable(false);
+        VBox documentsContent = new VBox(10);
+        documentsContent.getStyleClass().add("panel-card");
+        Label documentsHint = new Label("Documents lies, references ou chemins locaux associes a la personne.");
+        documentsHint.getStyleClass().add("muted-text");
+        documentsHint.setWrapText(true);
+        linkedDocumentsArea.setPromptText("Documents lies (references, liens, chemins)");
+        linkedDocumentsArea.setPrefRowCount(4);
+        documentsContent.getChildren().addAll(documentsHint, linkedDocumentsArea);
+        documentsTab.setContent(documentsContent);
+
+        tabs.getTabs().addAll(followUpTab, documentsTab);
+
         Button createButton = new Button("Creer");
         createButton.getStyleClass().add("accent-button");
         createButton.setOnAction(event -> createMember());
@@ -204,7 +263,7 @@ public class MembersScreen extends VBox {
         HBox actions = new HBox(10, createButton, updateButton, moreButton);
         actions.getStyleClass().add("action-row");
 
-        panel.getChildren().addAll(formTitle, mainGrid, advancedPane, customCategoriesPane, actions);
+        panel.getChildren().addAll(formTitle, mainGrid, advancedPane, tabs, actions);
         return panel;
     }
 
@@ -223,8 +282,6 @@ public class MembersScreen extends VBox {
 
         notesArea.setPromptText("Notes");
         notesArea.setPrefRowCount(2);
-        linkedDocumentsArea.setPromptText("Documents lies (references, liens, chemins)");
-        linkedDocumentsArea.setPrefRowCount(2);
 
         GridPane grid = new GridPane();
         grid.getStyleClass().add("form-grid");
@@ -246,10 +303,8 @@ public class MembersScreen extends VBox {
         grid.add(certificationsField, 1, 5, 3, 1);
         grid.add(new Label("Allergies/contraintes"), 0, 6);
         grid.add(constraintsInfoField, 1, 6, 3, 1);
-        grid.add(new Label("Documents lies"), 0, 7);
-        grid.add(linkedDocumentsArea, 1, 7, 3, 1);
-        grid.add(new Label("Notes"), 0, 8);
-        grid.add(notesArea, 1, 8, 3, 1);
+        grid.add(new Label("Notes"), 0, 7);
+        grid.add(notesArea, 1, 7, 3, 1);
 
         panel.getChildren().add(grid);
         return panel;
@@ -303,7 +358,7 @@ public class MembersScreen extends VBox {
         table.getStyleClass().add("app-table");
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
 
-        TableColumn<Member, Number> idColumn = new TableColumn<>("ID");
+        idColumn = new TableColumn<>("ID");
         idColumn.setCellValueFactory(cell -> new javafx.beans.property.SimpleLongProperty(cell.getValue().id()));
         idColumn.setPrefWidth(70);
 
@@ -315,11 +370,11 @@ public class MembersScreen extends VBox {
         typeColumn.setCellValueFactory(cell -> new javafx.beans.property.SimpleStringProperty(cell.getValue().personTypeLabel()));
         typeColumn.setPrefWidth(120);
 
-        TableColumn<Member, String> phoneColumn = new TableColumn<>("Telephone");
+        phoneColumn = new TableColumn<>("Telephone");
         phoneColumn.setCellValueFactory(cell -> new javafx.beans.property.SimpleStringProperty(defaultValue(cell.getValue().phone())));
         phoneColumn.setPrefWidth(130);
 
-        TableColumn<Member, String> emailColumn = new TableColumn<>("Email");
+        emailColumn = new TableColumn<>("Email");
         emailColumn.setCellValueFactory(cell -> new javafx.beans.property.SimpleStringProperty(defaultValue(cell.getValue().email())));
         emailColumn.setPrefWidth(190);
 
@@ -327,7 +382,7 @@ public class MembersScreen extends VBox {
         statusColumn.setCellValueFactory(cell -> new javafx.beans.property.SimpleStringProperty(cell.getValue().statusLabel()));
         statusColumn.setPrefWidth(100);
 
-        TableColumn<Member, String> roleColumn = new TableColumn<>("Role");
+        roleColumn = new TableColumn<>("Role");
         roleColumn.setCellValueFactory(cell -> new javafx.beans.property.SimpleStringProperty(defaultValue(cell.getValue().associationRole())));
         roleColumn.setPrefWidth(170);
 
@@ -617,6 +672,24 @@ public class MembersScreen extends VBox {
             return category.name();
         }
         return category.name() + " (sous-categorie)";
+    }
+
+    private void applyDisplayMode() {
+        DisplayMode mode = displayModeCombo.getValue() == null ? DisplayMode.COMPACT : displayModeCombo.getValue();
+        boolean detailed = mode == DisplayMode.DETAILED;
+
+        if (idColumn != null) {
+            idColumn.setVisible(detailed);
+        }
+        if (phoneColumn != null) {
+            phoneColumn.setVisible(detailed);
+        }
+        if (emailColumn != null) {
+            emailColumn.setVisible(detailed);
+        }
+        if (roleColumn != null) {
+            roleColumn.setVisible(detailed);
+        }
     }
 
     private String defaultValue(String value) {

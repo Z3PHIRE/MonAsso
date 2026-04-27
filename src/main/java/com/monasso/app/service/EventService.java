@@ -11,6 +11,7 @@ import com.monasso.app.util.ValidationUtils;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -41,6 +42,19 @@ public class EventService {
 
     public List<Event> getUpcomingEvents(int limit) {
         return eventRepository.findUpcoming(LocalDate.now(), limit);
+    }
+
+    public List<Event> getEventsToPrepare(int limit) {
+        int safeLimit = limit <= 0 ? 5 : limit;
+        LocalDate today = LocalDate.now();
+        LocalDate untilDate = today.plusDays(14);
+        Set<ScheduleStatus> statusesToPrepare = EnumSet.of(ScheduleStatus.DRAFT, ScheduleStatus.PLANNED);
+
+        return eventRepository.findByDateRange(today, untilDate, ArchiveFilter.ACTIVE)
+                .stream()
+                .filter(event -> statusesToPrepare.contains(event.status()))
+                .limit(safeLimit)
+                .toList();
     }
 
     public Event addEvent(

@@ -24,6 +24,7 @@ import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableRow;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
+import javafx.scene.control.TitledPane;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
@@ -39,6 +40,22 @@ import java.time.temporal.TemporalAdjusters;
 import java.util.Locale;
 
 public class CalendarScreen extends VBox {
+
+    private enum DisplayMode {
+        COMPACT("Compact"),
+        DETAILED("Detaille");
+
+        private final String label;
+
+        DisplayMode(String label) {
+            this.label = label;
+        }
+
+        @Override
+        public String toString() {
+            return label;
+        }
+    }
 
     private enum CalendarViewMode {
         MONTH("Vue mois"),
@@ -92,6 +109,7 @@ public class CalendarScreen extends VBox {
     private final ComboBox<TypeFilterOption> typeFilterCombo = new ComboBox<>();
     private final ComboBox<StatusFilterOption> statusFilterCombo = new ComboBox<>();
     private final ComboBox<ResponsibleOption> responsibleFilterCombo = new ComboBox<>();
+    private final ComboBox<DisplayMode> displayModeCombo = new ComboBox<>();
     private final TextField categoryFilterField = new TextField();
     private final Label periodLabel = new Label();
     private final Label summaryLabel = new Label();
@@ -111,6 +129,13 @@ public class CalendarScreen extends VBox {
     private final ComboBox<Member> quickResponsibleCombo = new ComboBox<>();
     private final ComboBox<ScheduleStatus> quickStatusCombo = new ComboBox<>();
     private final TextField quickCategoryField = new TextField();
+    private TableColumn<CalendarEntry, String> statusColumn;
+    private TableColumn<CalendarEntry, String> responsibleColumn;
+    private TableColumn<CalendarEntry, String> categoryColumn;
+    private TableColumn<CalendarEntry, String> locationColumn;
+    private TableColumn<CalendarEntry, String> conflictColumn;
+    private TitledPane detailPane;
+    private TitledPane quickCreatePane;
 
     private LocalDate anchorDate = LocalDate.now();
 
@@ -136,26 +161,43 @@ public class CalendarScreen extends VBox {
         subtitle.getStyleClass().add("screen-subtitle");
         subtitle.setWrapText(true);
 
+        displayModeCombo.getItems().setAll(DisplayMode.values());
+        displayModeCombo.getSelectionModel().select(DisplayMode.COMPACT);
+        displayModeCombo.valueProperty().addListener((obs, oldValue, newValue) -> applyDisplayMode());
+
+        HBox modeRow = new HBox(10, new Label("Mode"), displayModeCombo);
+        modeRow.getStyleClass().add("action-row");
+
         summaryLabel.getStyleClass().add("muted-text");
         periodLabel.getStyleClass().add("section-label");
 
         VBox.setVgrow(tableView, Priority.ALWAYS);
 
+        detailPane = new TitledPane("Fiche element selectionne", createDetailPanel());
+        detailPane.getStyleClass().add("folded-panel");
+        detailPane.setExpanded(false);
+
+        quickCreatePane = new TitledPane("Creation rapide depuis calendrier", createQuickCreatePanel());
+        quickCreatePane.getStyleClass().add("folded-panel");
+        quickCreatePane.setExpanded(false);
+
         getChildren().addAll(
                 title,
                 subtitle,
+                modeRow,
                 createNavigationPanel(),
                 createFilterPanel(),
                 periodLabel,
                 summaryLabel,
                 tableView,
-                createDetailPanel(),
-                createQuickCreatePanel()
+                detailPane,
+                quickCreatePane
         );
 
         initializeFilters();
         loadResponsibleFilters();
         refreshEntries();
+        applyDisplayMode();
     }
 
     private VBox createNavigationPanel() {
@@ -248,23 +290,18 @@ public class CalendarScreen extends VBox {
         VBox panel = new VBox(8);
         panel.getStyleClass().add("panel-card");
 
-        Label section = new Label("Fiche element selectionne");
-        section.getStyleClass().add("section-label");
         detailTitleLabel.getStyleClass().add("event-name");
         detailMetaLabel.getStyleClass().add("muted-text");
         detailDescriptionLabel.setWrapText(true);
         detailDescriptionLabel.getStyleClass().add("screen-subtitle");
 
-        panel.getChildren().addAll(section, detailTitleLabel, detailMetaLabel, detailDescriptionLabel);
+        panel.getChildren().addAll(detailTitleLabel, detailMetaLabel, detailDescriptionLabel);
         return panel;
     }
 
     private VBox createQuickCreatePanel() {
         VBox panel = new VBox(10);
         panel.getStyleClass().add("panel-card");
-
-        Label section = new Label("Creation rapide depuis calendrier");
-        section.getStyleClass().add("section-label");
 
         quickTypeCombo.getItems().setAll(CalendarEntryType.values());
         quickTypeCombo.getSelectionModel().select(CalendarEntryType.EVENT);
@@ -316,7 +353,7 @@ public class CalendarScreen extends VBox {
         createButton.getStyleClass().add("accent-button");
         createButton.setOnAction(event -> quickCreateEntry());
 
-        panel.getChildren().addAll(section, grid, createButton);
+        panel.getChildren().addAll(grid, createButton);
         return panel;
     }
 
@@ -343,25 +380,25 @@ public class CalendarScreen extends VBox {
         titleColumn.setCellValueFactory(cell -> new javafx.beans.property.SimpleStringProperty(cell.getValue().title()));
         titleColumn.setPrefWidth(220);
 
-        TableColumn<CalendarEntry, String> statusColumn = new TableColumn<>("Statut");
+        statusColumn = new TableColumn<>("Statut");
         statusColumn.setCellValueFactory(cell -> new javafx.beans.property.SimpleStringProperty(
                 (cell.getValue().status() == null ? ScheduleStatus.CONFIRMED : cell.getValue().status()).label()
         ));
         statusColumn.setPrefWidth(110);
 
-        TableColumn<CalendarEntry, String> responsibleColumn = new TableColumn<>("Responsable");
+        responsibleColumn = new TableColumn<>("Responsable");
         responsibleColumn.setCellValueFactory(cell -> new javafx.beans.property.SimpleStringProperty(defaultValue(cell.getValue().responsibleName())));
         responsibleColumn.setPrefWidth(150);
 
-        TableColumn<CalendarEntry, String> categoryColumn = new TableColumn<>("Categorie");
+        categoryColumn = new TableColumn<>("Categorie");
         categoryColumn.setCellValueFactory(cell -> new javafx.beans.property.SimpleStringProperty(defaultValue(cell.getValue().category())));
         categoryColumn.setPrefWidth(120);
 
-        TableColumn<CalendarEntry, String> locationColumn = new TableColumn<>("Lieu");
+        locationColumn = new TableColumn<>("Lieu");
         locationColumn.setCellValueFactory(cell -> new javafx.beans.property.SimpleStringProperty(defaultValue(cell.getValue().location())));
         locationColumn.setPrefWidth(160);
 
-        TableColumn<CalendarEntry, String> conflictColumn = new TableColumn<>("Conflit");
+        conflictColumn = new TableColumn<>("Conflit");
         conflictColumn.setCellValueFactory(cell -> new javafx.beans.property.SimpleStringProperty(cell.getValue().conflict() ? "Oui" : ""));
         conflictColumn.setPrefWidth(80);
 
@@ -566,5 +603,32 @@ public class CalendarScreen extends VBox {
 
     private String defaultValue(String value) {
         return value == null ? "" : value;
+    }
+
+    private void applyDisplayMode() {
+        DisplayMode mode = displayModeCombo.getValue() == null ? DisplayMode.COMPACT : displayModeCombo.getValue();
+        boolean detailed = mode == DisplayMode.DETAILED;
+
+        if (statusColumn != null) {
+            statusColumn.setVisible(detailed);
+        }
+        if (responsibleColumn != null) {
+            responsibleColumn.setVisible(detailed);
+        }
+        if (categoryColumn != null) {
+            categoryColumn.setVisible(detailed);
+        }
+        if (locationColumn != null) {
+            locationColumn.setVisible(detailed);
+        }
+        if (conflictColumn != null) {
+            conflictColumn.setVisible(detailed);
+        }
+        if (detailPane != null) {
+            detailPane.setExpanded(detailed);
+        }
+        if (quickCreatePane != null) {
+            quickCreatePane.setExpanded(detailed);
+        }
     }
 }

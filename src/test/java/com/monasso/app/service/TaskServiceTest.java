@@ -16,6 +16,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class TaskServiceTest {
 
@@ -68,6 +69,50 @@ class TaskServiceTest {
 
             List<TaskItem> openTasks = fixture.taskService.getTasks("", assignee.id(), null, TaskStatus.TODO);
             assertFalse(openTasks.stream().anyMatch(task -> task.id() == created.id()));
+        }
+    }
+
+    @Test
+    void shouldReturnOnlyOverdueOpenTasks() throws Exception {
+        try (TestAppFixture fixture = TestAppFixture.create("task-overdue")) {
+            fixture.taskService.addTask(
+                    "Relance partenaire",
+                    TaskLinkType.NONE,
+                    null,
+                    null,
+                    null,
+                    LocalDate.now().minusDays(2),
+                    TaskPriority.HIGH,
+                    TaskStatus.TODO,
+                    null
+            );
+            fixture.taskService.addTask(
+                    "Ancienne tache terminee",
+                    TaskLinkType.NONE,
+                    null,
+                    null,
+                    null,
+                    LocalDate.now().minusDays(1),
+                    TaskPriority.MEDIUM,
+                    TaskStatus.DONE,
+                    null
+            );
+            fixture.taskService.addTask(
+                    "Tache future",
+                    TaskLinkType.NONE,
+                    null,
+                    null,
+                    null,
+                    LocalDate.now().plusDays(2),
+                    TaskPriority.MEDIUM,
+                    TaskStatus.TODO,
+                    null
+            );
+
+            List<TaskItem> overdue = fixture.taskService.getOverdueTasks(10);
+            assertEquals(1, overdue.size());
+            assertEquals("Relance partenaire", overdue.getFirst().title());
+            assertTrue(overdue.stream().allMatch(task -> task.status() != TaskStatus.DONE));
         }
     }
 }

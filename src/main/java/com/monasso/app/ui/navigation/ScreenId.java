@@ -1,6 +1,8 @@
 package com.monasso.app.ui.navigation;
 
 public enum ScreenId {
+    WELCOME("Bienvenue"),
+    DAILY_USE("Utilisation quotidienne"),
     DASHBOARD("Tableau de bord"),
     SEARCH("Recherche globale"),
     CALENDAR("Calendrier"),
