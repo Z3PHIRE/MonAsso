@@ -269,7 +269,13 @@ public class DocumentsScreen extends VBox {
         pathColumn.setCellValueFactory(cell -> new SimpleStringProperty(defaultValue(cell.getValue().filePath())));
         pathColumn.setPrefWidth(260);
 
-        table.getColumns().addAll(idColumn, targetTypeColumn, targetColumn, nameColumn, typeColumn, dateColumn, pathColumn);
+        table.getColumns().add(idColumn);
+        table.getColumns().add(targetTypeColumn);
+        table.getColumns().add(targetColumn);
+        table.getColumns().add(nameColumn);
+        table.getColumns().add(typeColumn);
+        table.getColumns().add(dateColumn);
+        table.getColumns().add(pathColumn);
         table.getSelectionModel().selectedItemProperty().addListener((obs, oldValue, newValue) -> {
             if (newValue != null) {
                 loadDocumentIntoForm(newValue);

@@ -1,7 +1,6 @@
 package com.monasso.app.ui.screen;
 
 import com.monasso.app.model.GlobalSearchResult;
-import com.monasso.app.model.GlobalSearchType;
 import com.monasso.app.service.GlobalSearchService;
 import com.monasso.app.util.AlertUtils;
 import javafx.beans.property.SimpleStringProperty;
@@ -138,7 +137,10 @@ public class GlobalSearchScreen extends VBox {
         detailsColumn.setCellValueFactory(cell -> new SimpleStringProperty(defaultValue(cell.getValue().details())));
         detailsColumn.setPrefWidth(280);
 
-        table.getColumns().addAll(typeColumn, titleColumn, subtitleColumn, detailsColumn);
+        table.getColumns().add(typeColumn);
+        table.getColumns().add(titleColumn);
+        table.getColumns().add(subtitleColumn);
+        table.getColumns().add(detailsColumn);
         table.getSelectionModel().selectedItemProperty().addListener((obs, oldValue, newValue) -> showDetails(newValue));
         table.setRowFactory(tv -> {
             TableRow<GlobalSearchResult> row = new TableRow<>();

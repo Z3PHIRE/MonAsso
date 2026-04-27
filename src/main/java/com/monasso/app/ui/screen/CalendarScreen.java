@@ -365,7 +365,15 @@ public class CalendarScreen extends VBox {
         conflictColumn.setCellValueFactory(cell -> new javafx.beans.property.SimpleStringProperty(cell.getValue().conflict() ? "Oui" : ""));
         conflictColumn.setPrefWidth(80);
 
-        table.getColumns().addAll(dateColumn, typeColumn, timeColumn, titleColumn, statusColumn, responsibleColumn, categoryColumn, locationColumn, conflictColumn);
+        table.getColumns().add(dateColumn);
+        table.getColumns().add(typeColumn);
+        table.getColumns().add(timeColumn);
+        table.getColumns().add(titleColumn);
+        table.getColumns().add(statusColumn);
+        table.getColumns().add(responsibleColumn);
+        table.getColumns().add(categoryColumn);
+        table.getColumns().add(locationColumn);
+        table.getColumns().add(conflictColumn);
         table.setRowFactory(tv -> {
             TableRow<CalendarEntry> row = new TableRow<>();
             row.setOnMouseClicked(event -> {

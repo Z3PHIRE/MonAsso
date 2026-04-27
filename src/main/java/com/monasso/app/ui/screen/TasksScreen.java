@@ -305,7 +305,13 @@ public class TasksScreen extends VBox {
         statusColumn.setCellValueFactory(cell -> new SimpleStringProperty(cell.getValue().status().label()));
         statusColumn.setPrefWidth(110);
 
-        table.getColumns().addAll(idColumn, titleColumn, linkColumn, assigneeColumn, dueDateColumn, priorityColumn, statusColumn);
+        table.getColumns().add(idColumn);
+        table.getColumns().add(titleColumn);
+        table.getColumns().add(linkColumn);
+        table.getColumns().add(assigneeColumn);
+        table.getColumns().add(dueDateColumn);
+        table.getColumns().add(priorityColumn);
+        table.getColumns().add(statusColumn);
         table.getSelectionModel().selectedItemProperty().addListener((obs, oldValue, newValue) -> {
             if (newValue != null) {
                 loadTaskIntoForm(newValue);

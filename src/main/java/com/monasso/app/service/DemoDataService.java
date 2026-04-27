@@ -105,7 +105,7 @@ public class DemoDataService {
                 "",
                 ""
         );
-        Member hugo = memberService.addMember(
+        memberService.addMember(
                 "Hugo",
                 "Petit",
                 PersonType.PARTNER,

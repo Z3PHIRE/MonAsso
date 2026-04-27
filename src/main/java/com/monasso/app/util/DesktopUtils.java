@@ -2,6 +2,7 @@ package com.monasso.app.util;
 
 import java.awt.Desktop;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 
 public final class DesktopUtils {
@@ -12,6 +13,9 @@ public final class DesktopUtils {
     public static void openFile(Path filePath) {
         if (filePath == null) {
             throw new IllegalArgumentException("Le fichier a ouvrir est obligatoire.");
+        }
+        if (!Files.exists(filePath) || !Files.isRegularFile(filePath)) {
+            throw new IllegalStateException("Fichier introuvable: " + filePath);
         }
         if (!Desktop.isDesktopSupported() || !Desktop.getDesktop().isSupported(Desktop.Action.OPEN)) {
             throw new IllegalStateException("L'ouverture de fichier n'est pas supportee sur ce systeme.");
@@ -26,6 +30,9 @@ public final class DesktopUtils {
     public static void openDirectory(Path directory) {
         if (directory == null) {
             throw new IllegalArgumentException("Le dossier a ouvrir est obligatoire.");
+        }
+        if (!Files.exists(directory) || !Files.isDirectory(directory)) {
+            throw new IllegalStateException("Dossier introuvable: " + directory);
         }
         if (!Desktop.isDesktopSupported() || !Desktop.getDesktop().isSupported(Desktop.Action.OPEN)) {
             throw new IllegalStateException("L'ouverture de dossier n'est pas supportee sur ce systeme.");

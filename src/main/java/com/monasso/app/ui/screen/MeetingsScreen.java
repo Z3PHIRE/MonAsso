@@ -382,7 +382,14 @@ public class MeetingsScreen extends VBox {
         archivedColumn.setCellValueFactory(cell -> new javafx.beans.property.SimpleStringProperty(cell.getValue().archived() ? "Oui" : "Non"));
         archivedColumn.setPrefWidth(90);
 
-        table.getColumns().addAll(idColumn, titleColumn, dateColumn, timeColumn, statusColumn, responsibleColumn, participantsColumn, archivedColumn);
+        table.getColumns().add(idColumn);
+        table.getColumns().add(titleColumn);
+        table.getColumns().add(dateColumn);
+        table.getColumns().add(timeColumn);
+        table.getColumns().add(statusColumn);
+        table.getColumns().add(responsibleColumn);
+        table.getColumns().add(participantsColumn);
+        table.getColumns().add(archivedColumn);
         table.setRowFactory(tv -> {
             TableRow<Meeting> row = new TableRow<>();
             row.setOnMouseClicked(event -> {
@@ -418,7 +425,9 @@ public class MeetingsScreen extends VBox {
         statusColumn.setCellValueFactory(cell -> new javafx.beans.property.SimpleStringProperty(cell.getValue().statusLabel()));
         statusColumn.setPrefWidth(100);
 
-        table.getColumns().addAll(nameColumn, emailColumn, statusColumn);
+        table.getColumns().add(nameColumn);
+        table.getColumns().add(emailColumn);
+        table.getColumns().add(statusColumn);
         return table;
     }
 
@@ -453,6 +462,14 @@ public class MeetingsScreen extends VBox {
                 deleteButton.setOnAction(event -> {
                     ChecklistItem item = getItem();
                     if (item == null) {
+                        return;
+                    }
+                    boolean confirmed = AlertUtils.confirm(
+                            getScene().getWindow(),
+                            "Reunions",
+                            "Supprimer l'item checklist \"" + defaultValue(item.label()) + "\" ?"
+                    );
+                    if (!confirmed) {
                         return;
                     }
                     try {

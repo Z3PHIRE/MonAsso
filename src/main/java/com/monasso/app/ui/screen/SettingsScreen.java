@@ -34,7 +34,6 @@ import javafx.stage.FileChooser;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -307,7 +306,11 @@ public class SettingsScreen extends VBox {
         activeColumn.setCellValueFactory(cell -> new javafx.beans.property.SimpleStringProperty(cell.getValue().active() ? "Oui" : "Non"));
         activeColumn.setPrefWidth(90);
 
-        table.getColumns().addAll(nameColumn, parentColumn, typeColumn, scopesColumn, activeColumn);
+        table.getColumns().add(nameColumn);
+        table.getColumns().add(parentColumn);
+        table.getColumns().add(typeColumn);
+        table.getColumns().add(scopesColumn);
+        table.getColumns().add(activeColumn);
         table.getSelectionModel().selectedItemProperty().addListener((obs, oldValue, newValue) -> {
             if (newValue != null) {
                 loadCategoryIntoForm(newValue);

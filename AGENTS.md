@@ -98,6 +98,7 @@ Avant de conclure une etape:
 2. Verifier tests utiles.
 3. Verifier non regression des flux critiques.
 4. Verifier packaging Windows cible.
+5. Verifier qu'un artefact de release clairement nomme existe (`release/MonAsso-vX.Y.Z`).
 
 Commandes de reference:
 

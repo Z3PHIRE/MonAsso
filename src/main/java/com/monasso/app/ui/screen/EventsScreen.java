@@ -719,17 +719,15 @@ public class EventsScreen extends VBox {
         archivedColumn.setCellValueFactory(cell -> new javafx.beans.property.SimpleStringProperty(cell.getValue().archived() ? "Oui" : "Non"));
         archivedColumn.setPrefWidth(90);
 
-        table.getColumns().addAll(
-                idColumn,
-                titleColumn,
-                dateColumn,
-                timeColumn,
-                statusColumn,
-                responsibleColumn,
-                categoryColumn,
-                capacityColumn,
-                archivedColumn
-        );
+        table.getColumns().add(idColumn);
+        table.getColumns().add(titleColumn);
+        table.getColumns().add(dateColumn);
+        table.getColumns().add(timeColumn);
+        table.getColumns().add(statusColumn);
+        table.getColumns().add(responsibleColumn);
+        table.getColumns().add(categoryColumn);
+        table.getColumns().add(capacityColumn);
+        table.getColumns().add(archivedColumn);
         table.setRowFactory(tv -> {
             TableRow<Event> row = new TableRow<>();
             row.setOnMouseClicked(event -> {
@@ -769,7 +767,10 @@ public class EventsScreen extends VBox {
         attendanceColumn.setCellValueFactory(cell -> new javafx.beans.property.SimpleStringProperty(cell.getValue().attendanceStatus().label()));
         attendanceColumn.setPrefWidth(120);
 
-        table.getColumns().addAll(nameColumn, emailColumn, activeColumn, attendanceColumn);
+        table.getColumns().add(nameColumn);
+        table.getColumns().add(emailColumn);
+        table.getColumns().add(activeColumn);
+        table.getColumns().add(attendanceColumn);
         return table;
     }
 
@@ -799,7 +800,11 @@ public class EventsScreen extends VBox {
         amountColumn.setCellValueFactory(cell -> new javafx.beans.property.SimpleStringProperty(formatAmount(cell.getValue().amount())));
         amountColumn.setPrefWidth(120);
 
-        table.getColumns().addAll(phaseColumn, typeColumn, categoryColumn, labelColumn, amountColumn);
+        table.getColumns().add(phaseColumn);
+        table.getColumns().add(typeColumn);
+        table.getColumns().add(categoryColumn);
+        table.getColumns().add(labelColumn);
+        table.getColumns().add(amountColumn);
         return table;
     }
 
@@ -827,7 +832,10 @@ public class EventsScreen extends VBox {
         statusColumn.setCellValueFactory(cell -> new javafx.beans.property.SimpleStringProperty(cell.getValue().statusLabel()));
         statusColumn.setPrefWidth(110);
 
-        table.getColumns().addAll(titleColumn, dueDateColumn, responsibleColumn, statusColumn);
+        table.getColumns().add(titleColumn);
+        table.getColumns().add(dueDateColumn);
+        table.getColumns().add(responsibleColumn);
+        table.getColumns().add(statusColumn);
         return table;
     }
 
@@ -849,7 +857,9 @@ public class EventsScreen extends VBox {
         notesColumn.setCellValueFactory(cell -> new javafx.beans.property.SimpleStringProperty(defaultValue(cell.getValue().notes())));
         notesColumn.setPrefWidth(220);
 
-        table.getColumns().addAll(nameColumn, refColumn, notesColumn);
+        table.getColumns().add(nameColumn);
+        table.getColumns().add(refColumn);
+        table.getColumns().add(notesColumn);
         return table;
     }
 
@@ -913,6 +923,14 @@ public class EventsScreen extends VBox {
                 deleteButton.setOnAction(event -> {
                     ChecklistItem item = getItem();
                     if (item == null) {
+                        return;
+                    }
+                    boolean confirmed = AlertUtils.confirm(
+                            getScene().getWindow(),
+                            "Evenements",
+                            "Supprimer l'item checklist \"" + defaultValue(item.label()) + "\" ?"
+                    );
+                    if (!confirmed) {
                         return;
                     }
                     try {
@@ -1267,6 +1285,14 @@ public class EventsScreen extends VBox {
             AlertUtils.warning(getScene().getWindow(), "Evenements", "Selectionnez une ligne budget.");
             return;
         }
+        boolean confirmed = AlertUtils.confirm(
+                getScene().getWindow(),
+                "Evenements",
+                "Supprimer la ligne budget \"" + defaultValue(selected.label()) + "\" ?"
+        );
+        if (!confirmed) {
+            return;
+        }
         try {
             eventTrackingService.deleteBudgetLine(editingEventId, selected.id());
             refreshBudget();
@@ -1340,6 +1366,14 @@ public class EventsScreen extends VBox {
             AlertUtils.warning(getScene().getWindow(), "Evenements", "Selectionnez une tache.");
             return;
         }
+        boolean confirmed = AlertUtils.confirm(
+                getScene().getWindow(),
+                "Evenements",
+                "Supprimer la tache \"" + defaultValue(selected.title()) + "\" ?"
+        );
+        if (!confirmed) {
+            return;
+        }
         try {
             eventTrackingService.deleteTask(editingEventId, selected.id());
             refreshTasks();
@@ -1389,6 +1423,14 @@ public class EventsScreen extends VBox {
         EventDocument selected = documentsTable.getSelectionModel().getSelectedItem();
         if (selected == null) {
             AlertUtils.warning(getScene().getWindow(), "Evenements", "Selectionnez un document.");
+            return;
+        }
+        boolean confirmed = AlertUtils.confirm(
+                getScene().getWindow(),
+                "Evenements",
+                "Supprimer le document \"" + defaultValue(selected.documentName()) + "\" ?"
+        );
+        if (!confirmed) {
             return;
         }
         try {

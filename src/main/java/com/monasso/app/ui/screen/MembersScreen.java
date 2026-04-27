@@ -13,7 +13,6 @@ import com.monasso.app.util.AlertUtils;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
-import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
@@ -332,7 +331,13 @@ public class MembersScreen extends VBox {
         roleColumn.setCellValueFactory(cell -> new javafx.beans.property.SimpleStringProperty(defaultValue(cell.getValue().associationRole())));
         roleColumn.setPrefWidth(170);
 
-        table.getColumns().addAll(idColumn, fullNameColumn, typeColumn, phoneColumn, emailColumn, statusColumn, roleColumn);
+        table.getColumns().add(idColumn);
+        table.getColumns().add(fullNameColumn);
+        table.getColumns().add(typeColumn);
+        table.getColumns().add(phoneColumn);
+        table.getColumns().add(emailColumn);
+        table.getColumns().add(statusColumn);
+        table.getColumns().add(roleColumn);
 
         table.setRowFactory(tv -> {
             TableRow<Member> row = new TableRow<>();

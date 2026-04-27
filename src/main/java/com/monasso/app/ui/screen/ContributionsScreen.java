@@ -246,7 +246,13 @@ public class ContributionsScreen extends VBox {
         methodColumn.setCellValueFactory(cell -> new javafx.beans.property.SimpleStringProperty(defaultValue(cell.getValue().paymentMethod())));
         methodColumn.setPrefWidth(140);
 
-        table.getColumns().addAll(idColumn, memberColumn, amountColumn, dateColumn, periodColumn, statusColumn, methodColumn);
+        table.getColumns().add(idColumn);
+        table.getColumns().add(memberColumn);
+        table.getColumns().add(amountColumn);
+        table.getColumns().add(dateColumn);
+        table.getColumns().add(periodColumn);
+        table.getColumns().add(statusColumn);
+        table.getColumns().add(methodColumn);
         table.setRowFactory(tv -> {
             TableRow<Contribution> row = new TableRow<>();
             row.setOnMouseClicked(event -> {
@@ -285,7 +291,10 @@ public class ContributionsScreen extends VBox {
         statusColumn.setCellValueFactory(cell -> new javafx.beans.property.SimpleStringProperty(cell.getValue().status().label()));
         statusColumn.setPrefWidth(110);
 
-        table.getColumns().addAll(dateColumn, periodColumn, amountColumn, statusColumn);
+        table.getColumns().add(dateColumn);
+        table.getColumns().add(periodColumn);
+        table.getColumns().add(amountColumn);
+        table.getColumns().add(statusColumn);
         return table;
     }
 

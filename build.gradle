@@ -5,7 +5,7 @@ plugins {
 }
 
 group = 'com.monasso'
-version = '0.1.0'
+version = '1.0.0'
 
 def customBuildDir = findProperty('buildDir')
 if (customBuildDir != null && !customBuildDir.toString().isBlank()) {
@@ -30,14 +30,11 @@ tasks.withType(JavaCompile).configureEach {
     options.incremental = false
     options.fork = true
     def configuredJavaHome = System.getenv('JAVA_HOME')
-    def fallbackJavac = file('C:/Program Files/Java/jdk-24/bin/javac.exe')
     if (configuredJavaHome != null && !configuredJavaHome.isBlank()) {
         def fromJavaHome = file("${configuredJavaHome}/bin/javac.exe")
         if (fromJavaHome.exists()) {
             options.forkOptions.executable = fromJavaHome.absolutePath
         }
-    } else if (fallbackJavac.exists()) {
-        options.forkOptions.executable = fallbackJavac.absolutePath
     }
 }
 
@@ -56,15 +53,6 @@ dependencies {
 
     testImplementation 'org.junit.jupiter:junit-jupiter:5.10.2'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.10.2'
-}
-
-configurations {
-    testCompileClasspath {
-        exclude group: 'org.openjfx'
-    }
-    testRuntimeClasspath {
-        exclude group: 'org.openjfx'
-    }
 }
 
 application {
@@ -130,6 +118,53 @@ def windowsImageDir = layout.buildDirectory.dir('windows-image')
 def windowsInstallerDir = layout.buildDirectory.dir('windows-installer')
 def jpackageInputDir = layout.buildDirectory.dir('jpackage-input')
 def isWindowsHost = System.getProperty('os.name').toLowerCase().contains('windows')
+def ensureJavafxOptionsInLauncherCfg = { File launcherCfg ->
+    if (!launcherCfg.exists()) {
+        return
+    }
+    List<String> requiredOptions = [
+            'java-options=--module-path',
+            'java-options=$APPDIR\\lib',
+            'java-options=--add-modules=javafx.controls,javafx.graphics'
+    ]
+    List<String> lines = launcherCfg.readLines('UTF-8')
+    boolean changed = false
+    requiredOptions.each { String option ->
+        if (!lines.contains(option)) {
+            lines.add(option)
+            changed = true
+        }
+    }
+    if (changed) {
+        launcherCfg.setText(lines.join(System.lineSeparator()) + System.lineSeparator(), 'UTF-8')
+    }
+}
+def resolveJpackageExecutable = {
+    String executableName = isWindowsHost ? 'jpackage.exe' : 'jpackage'
+    List<File> candidates = []
+
+    def configuredJavaHome = System.getenv('JAVA_HOME')
+    if (configuredJavaHome != null && !configuredJavaHome.isBlank()) {
+        candidates.add(file("${configuredJavaHome}/bin/${executableName}"))
+    }
+
+    def runtimeJavaHome = System.getProperty('java.home')
+    if (runtimeJavaHome != null && !runtimeJavaHome.isBlank()) {
+        File runtimeHome = file(runtimeJavaHome)
+        candidates.add(new File(runtimeHome, "bin/${executableName}"))
+        if (runtimeHome.parentFile != null) {
+            candidates.add(new File(runtimeHome.parentFile, "bin/${executableName}"))
+        }
+    }
+
+    for (File candidate : candidates) {
+        if (candidate.exists()) {
+            return candidate.absolutePath
+        }
+    }
+
+    return null
+}
 
 tasks.register('prepareJpackageInput', Copy) {
     group = 'distribution'
@@ -150,6 +185,10 @@ tasks.register('packageWindowsImage', Exec) {
     dependsOn tasks.named('prepareJpackageInput')
     onlyIf { isWindowsHost }
     doFirst {
+        def jpackageExecutable = resolveJpackageExecutable()
+        if (jpackageExecutable == null) {
+            throw new GradleException("jpackage introuvable. Installez un JDK (Java 21 recommande) ou configurez JAVA_HOME.")
+        }
         def destination = windowsImageDir.get().asFile
         destination.mkdirs()
         def outputAppDir = new File(destination, 'MonAsso')
@@ -158,7 +197,7 @@ tasks.register('packageWindowsImage', Exec) {
         }
 
         def command = [
-                'jpackage',
+                jpackageExecutable,
                 '--type', 'app-image',
                 '--name', 'MonAsso',
                 '--dest', destination.absolutePath,
@@ -174,6 +213,10 @@ tasks.register('packageWindowsImage', Exec) {
         }
         commandLine command
     }
+    doLast {
+        File launcherCfg = new File(windowsImageDir.get().asFile, 'MonAsso/app/MonAsso.cfg')
+        ensureJavafxOptionsInLauncherCfg(launcherCfg)
+    }
 }
 
 tasks.register('packageWindowsInstaller', Exec) {
@@ -182,10 +225,14 @@ tasks.register('packageWindowsInstaller', Exec) {
     dependsOn tasks.named('prepareJpackageInput')
     onlyIf { isWindowsHost }
     doFirst {
+        def jpackageExecutable = resolveJpackageExecutable()
+        if (jpackageExecutable == null) {
+            throw new GradleException("jpackage introuvable. Installez un JDK (Java 21 recommande) ou configurez JAVA_HOME.")
+        }
         def destination = windowsInstallerDir.get().asFile
         destination.mkdirs()
         def command = [
-                'jpackage',
+                jpackageExecutable,
                 '--type', 'exe',
                 '--name', 'MonAsso',
                 '--dest', destination.absolutePath,
@@ -203,6 +250,10 @@ tasks.register('packageWindowsInstaller', Exec) {
             command += ['--icon', windowsIconFile.absolutePath]
         }
         commandLine command
+    }
+    doLast {
+        File launcherCfg = new File(windowsInstallerDir.get().asFile, 'MonAsso/app/MonAsso.cfg')
+        ensureJavafxOptionsInLauncherCfg(launcherCfg)
     }
 }
 
