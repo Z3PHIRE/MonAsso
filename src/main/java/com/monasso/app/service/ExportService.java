@@ -77,20 +77,10 @@ public class ExportService {
 
     public Path exportMembersCsv(Path directory) {
         List<Member> members = loadMembers();
-        List<String> headers = List.of("ID", "Prenom", "Nom", "Email", "Telephone", "Adresse", "Date adhesion", "Statut", "Notes");
+        List<String> headers = memberHeaders();
         List<List<String>> rows = new ArrayList<>();
         for (Member member : members) {
-            rows.add(List.of(
-                    String.valueOf(member.id()),
-                    defaultValue(member.firstName()),
-                    defaultValue(member.lastName()),
-                    defaultValue(member.email()),
-                    defaultValue(member.phone()),
-                    defaultValue(member.address()),
-                    member.joinDate().toString(),
-                    member.statusLabel(),
-                    defaultValue(member.notes())
-            ));
+            rows.add(memberRow(member));
         }
         return writeCsv(directory, buildFilename("members", ".csv"), headers, rows);
     }
@@ -137,20 +127,10 @@ public class ExportService {
     public Path exportMembersXlsx(Path directory) {
         List<Member> members = loadMembers();
         return writeXlsx(directory, buildFilename("members", ".xlsx"), workbook -> {
-            List<String> headers = List.of("ID", "Prenom", "Nom", "Email", "Telephone", "Adresse", "Date adhesion", "Statut", "Notes");
+            List<String> headers = memberHeaders();
             List<List<String>> rows = new ArrayList<>();
             for (Member member : members) {
-                rows.add(List.of(
-                        String.valueOf(member.id()),
-                        defaultValue(member.firstName()),
-                        defaultValue(member.lastName()),
-                        defaultValue(member.email()),
-                        defaultValue(member.phone()),
-                        defaultValue(member.address()),
-                        member.joinDate().toString(),
-                        member.statusLabel(),
-                        defaultValue(member.notes())
-                ));
+                rows.add(memberRow(member));
             }
             createSheet(workbook, "Membres", headers, rows);
         });
@@ -207,22 +187,12 @@ public class ExportService {
         return writeXlsx(directory, buildFilename("global_export", ".xlsx"), workbook -> {
             List<List<String>> memberRows = new ArrayList<>();
             for (Member member : members) {
-                memberRows.add(List.of(
-                        String.valueOf(member.id()),
-                        defaultValue(member.firstName()),
-                        defaultValue(member.lastName()),
-                        defaultValue(member.email()),
-                        defaultValue(member.phone()),
-                        defaultValue(member.address()),
-                        member.joinDate().toString(),
-                        member.statusLabel(),
-                        defaultValue(member.notes())
-                ));
+                memberRows.add(memberRow(member));
             }
             createSheet(
                     workbook,
                     "Membres",
-                    List.of("ID", "Prenom", "Nom", "Email", "Telephone", "Adresse", "Date adhesion", "Statut", "Notes"),
+                    memberHeaders(),
                     memberRows
             );
 
@@ -277,13 +247,15 @@ public class ExportService {
         for (Member member : members) {
             lines.add(String.format(
                     Locale.FRANCE,
-                    "#%d | %s | email: %s | tel: %s | adhesion: %s | statut: %s | adresse: %s | notes: %s",
+                    "#%d | %s | type: %s | email: %s | tel: %s | adhesion: %s | statut: %s | role: %s | adresse: %s | notes: %s",
                     member.id(),
                     member.fullName(),
+                    member.personTypeLabel(),
                     defaultValue(member.email()),
                     defaultValue(member.phone()),
                     member.joinDate(),
                     member.statusLabel(),
+                    defaultValue(member.associationRole()),
                     defaultValue(member.address()),
                     defaultValue(member.notes())
             ));
@@ -446,6 +418,52 @@ public class ExportService {
             sheet.setColumnWidth(colIndex, Math.min(width + 1024, 20000));
         }
         sheet.createFreezePane(0, 1);
+    }
+
+    private List<String> memberHeaders() {
+        return List.of(
+                "ID",
+                "Prenom",
+                "Nom",
+                "Type",
+                "Email",
+                "Telephone",
+                "Statut",
+                "Date entree",
+                "Role",
+                "Adresse",
+                "Competences",
+                "Disponibilites",
+                "Contact urgence",
+                "Taille vetements",
+                "Certifications",
+                "Contraintes",
+                "Documents",
+                "Notes"
+        );
+    }
+
+    private List<String> memberRow(Member member) {
+        return List.of(
+                String.valueOf(member.id()),
+                defaultValue(member.firstName()),
+                defaultValue(member.lastName()),
+                member.personTypeLabel(),
+                defaultValue(member.email()),
+                defaultValue(member.phone()),
+                member.statusLabel(),
+                member.joinDate().toString(),
+                defaultValue(member.associationRole()),
+                defaultValue(member.address()),
+                defaultValue(member.skills()),
+                defaultValue(member.availability()),
+                defaultValue(member.emergencyContact()),
+                defaultValue(member.clothingSize()),
+                defaultValue(member.certifications()),
+                defaultValue(member.constraintsInfo()),
+                defaultValue(member.linkedDocuments()),
+                defaultValue(member.notes())
+        );
     }
 
     private List<Member> loadMembers() {

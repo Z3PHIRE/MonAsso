@@ -18,7 +18,8 @@ class DemoDataServiceTest {
 
             DemoDataService.DemoDataResult result = fixture.demoDataService.loadDemoData();
             assertEquals(4, result.members());
-            assertEquals(3, result.events());
+            assertEquals(2, result.events());
+            assertEquals(1, result.meetings());
             assertEquals(3, result.contributions());
 
             assertThrows(IllegalStateException.class, fixture.demoDataService::loadDemoData);

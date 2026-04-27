@@ -1,6 +1,7 @@
 package com.monasso.app.repository;
 
 import com.monasso.app.model.Member;
+import com.monasso.app.model.PersonType;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -22,7 +23,25 @@ public class EventParticipantRepository {
 
     public List<Member> findParticipants(long eventId, String query) {
         StringBuilder sql = new StringBuilder("""
-                SELECT m.id, m.first_name, m.last_name, m.email, m.phone, m.address, m.join_date, m.is_active, m.notes
+                SELECT
+                    m.id,
+                    m.first_name,
+                    m.last_name,
+                    m.person_type,
+                    m.email,
+                    m.phone,
+                    m.is_active,
+                    m.address,
+                    m.join_date,
+                    m.association_role,
+                    m.skills,
+                    m.availability,
+                    m.notes,
+                    m.emergency_contact,
+                    m.clothing_size,
+                    m.certifications,
+                    m.constraints_info,
+                    m.linked_documents
                 FROM event_participants ep
                 JOIN members m ON m.id = ep.member_id
                 WHERE ep.event_id = ?
@@ -62,8 +81,8 @@ public class EventParticipantRepository {
 
     public void addParticipant(long eventId, long memberId) {
         String sql = """
-                INSERT INTO event_participants(event_id, member_id, registration_date)
-                VALUES (?, ?, CURRENT_TIMESTAMP)
+                INSERT INTO event_participants(event_id, member_id, attendance_status, registration_date)
+                VALUES (?, ?, 'REGISTERED', CURRENT_TIMESTAMP)
                 ON CONFLICT(event_id, member_id) DO NOTHING
                 """;
         try (Connection connection = databaseManager.getConnection();
@@ -128,16 +147,26 @@ public class EventParticipantRepository {
     }
 
     private Member mapMember(ResultSet rs) throws SQLException {
+        String joinDateRaw = rs.getString("join_date");
         return new Member(
                 rs.getLong("id"),
                 rs.getString("first_name"),
                 rs.getString("last_name"),
+                PersonType.fromDatabase(rs.getString("person_type")),
                 rs.getString("email"),
                 rs.getString("phone"),
-                rs.getString("address"),
-                LocalDate.parse(rs.getString("join_date")),
                 rs.getInt("is_active") == 1,
-                rs.getString("notes")
+                rs.getString("address"),
+                joinDateRaw == null || joinDateRaw.isBlank() ? LocalDate.now() : LocalDate.parse(joinDateRaw),
+                rs.getString("association_role"),
+                rs.getString("skills"),
+                rs.getString("availability"),
+                rs.getString("notes"),
+                rs.getString("emergency_contact"),
+                rs.getString("clothing_size"),
+                rs.getString("certifications"),
+                rs.getString("constraints_info"),
+                rs.getString("linked_documents")
         );
     }
 }

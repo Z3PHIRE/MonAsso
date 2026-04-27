@@ -1,18 +1,23 @@
 package com.monasso.app.ui;
 
 import com.monasso.app.config.AppContext;
+import com.monasso.app.model.GlobalSearchResult;
 import com.monasso.app.service.BrandingService;
 import com.monasso.app.ui.component.PictogramFactory;
 import com.monasso.app.ui.navigation.NavigationManager;
 import com.monasso.app.ui.navigation.ScreenId;
 import com.monasso.app.ui.screen.ContributionsScreen;
+import com.monasso.app.ui.screen.CalendarScreen;
 import com.monasso.app.ui.screen.DashboardScreen;
+import com.monasso.app.ui.screen.DocumentsScreen;
 import com.monasso.app.ui.screen.EventsScreen;
 import com.monasso.app.ui.screen.ExportsScreen;
+import com.monasso.app.ui.screen.GlobalSearchScreen;
 import com.monasso.app.ui.screen.MeetingsScreen;
 import com.monasso.app.ui.screen.MembersScreen;
 import com.monasso.app.ui.screen.PersonalizationScreen;
 import com.monasso.app.ui.screen.SettingsScreen;
+import com.monasso.app.ui.screen.TasksScreen;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Parent;
@@ -37,21 +42,29 @@ import java.util.Map;
 
 public class MainView {
 
-    private static final Map<ScreenId, String> SCREEN_PICTOGRAMS = Map.of(
-            ScreenId.DASHBOARD, "DB",
-            ScreenId.MEMBERS, "PS",
-            ScreenId.EVENTS, "EV",
-            ScreenId.MEETINGS, "RE",
-            ScreenId.CONTRIBUTIONS, "CT",
-            ScreenId.EXPORTS, "EX",
-            ScreenId.SETTINGS, "PR",
-            ScreenId.PERSONALIZATION, "TH"
+    private static final Map<ScreenId, String> SCREEN_PICTOGRAMS = Map.ofEntries(
+            Map.entry(ScreenId.DASHBOARD, "DB"),
+            Map.entry(ScreenId.SEARCH, "SR"),
+            Map.entry(ScreenId.CALENDAR, "CL"),
+            Map.entry(ScreenId.MEMBERS, "PS"),
+            Map.entry(ScreenId.EVENTS, "EV"),
+            Map.entry(ScreenId.MEETINGS, "RE"),
+            Map.entry(ScreenId.TASKS, "TK"),
+            Map.entry(ScreenId.DOCUMENTS, "DC"),
+            Map.entry(ScreenId.CONTRIBUTIONS, "CT"),
+            Map.entry(ScreenId.EXPORTS, "EX"),
+            Map.entry(ScreenId.SETTINGS, "PR"),
+            Map.entry(ScreenId.PERSONALIZATION, "TH")
     );
     private static final List<ScreenId> PRIMARY_SCREENS = Arrays.asList(
             ScreenId.DASHBOARD,
+            ScreenId.SEARCH,
+            ScreenId.CALENDAR,
             ScreenId.MEMBERS,
             ScreenId.EVENTS,
             ScreenId.MEETINGS,
+            ScreenId.TASKS,
+            ScreenId.DOCUMENTS,
             ScreenId.CONTRIBUTIONS,
             ScreenId.EXPORTS
     );
@@ -180,9 +193,47 @@ public class MainView {
 
     private void configureNavigation() {
         navigationManager.register(ScreenId.DASHBOARD, () -> new DashboardScreen(appContext.dashboardService(), this::onDashboardAction));
-        navigationManager.register(ScreenId.MEMBERS, () -> new MembersScreen(appContext.memberService()));
-        navigationManager.register(ScreenId.EVENTS, () -> new EventsScreen(appContext.eventService()));
-        navigationManager.register(ScreenId.MEETINGS, () -> new MeetingsScreen(appContext.eventService()));
+        navigationManager.register(ScreenId.SEARCH, () -> new GlobalSearchScreen(appContext.globalSearchService(), this::onSearchOpen));
+        navigationManager.register(
+                ScreenId.CALENDAR,
+                () -> new CalendarScreen(
+                        appContext.calendarService(),
+                        appContext.eventService(),
+                        appContext.meetingService(),
+                        appContext.memberService()
+                )
+        );
+        navigationManager.register(ScreenId.MEMBERS, () -> new MembersScreen(appContext.memberService(), appContext.customCategoryService()));
+        navigationManager.register(
+                ScreenId.EVENTS,
+                () -> new EventsScreen(
+                        appContext.eventService(),
+                        appContext.eventTrackingService(),
+                        appContext.memberService(),
+                        appContext.customCategoryService(),
+                        appContext.checklistService()
+                )
+        );
+        navigationManager.register(ScreenId.MEETINGS, () -> new MeetingsScreen(appContext.meetingService(), appContext.memberService(), appContext.checklistService()));
+        navigationManager.register(
+                ScreenId.TASKS,
+                () -> new TasksScreen(
+                        appContext.taskService(),
+                        appContext.eventService(),
+                        appContext.meetingService(),
+                        appContext.memberService()
+                )
+        );
+        navigationManager.register(
+                ScreenId.DOCUMENTS,
+                () -> new DocumentsScreen(
+                        appContext.documentService(),
+                        appContext.memberService(),
+                        appContext.eventService(),
+                        appContext.meetingService(),
+                        appContext.taskService()
+                )
+        );
         navigationManager.register(ScreenId.CONTRIBUTIONS, () -> new ContributionsScreen(appContext.contributionService(), appContext.memberService()));
         navigationManager.register(ScreenId.EXPORTS, () -> new ExportsScreen(appContext.exportService(), appContext.settingsService()));
         navigationManager.register(
@@ -191,6 +242,7 @@ public class MainView {
                         appContext.settingsService(),
                         appContext.dataSafetyService(),
                         appContext.demoDataService(),
+                        appContext.customCategoryService(),
                         this::reloadDataViews
                 )
         );
@@ -227,6 +279,18 @@ public class MainView {
             case CREATE_MEETING -> navigationManager.navigate(ScreenId.MEETINGS);
             case RECORD_CONTRIBUTION -> navigationManager.navigate(ScreenId.CONTRIBUTIONS);
             case EXPORT_DATA -> navigationManager.navigate(ScreenId.EXPORTS);
+        }
+    }
+
+    private void onSearchOpen(GlobalSearchResult result) {
+        if (result == null || result.type() == null) {
+            return;
+        }
+        switch (result.type()) {
+            case PERSON -> navigationManager.navigate(ScreenId.MEMBERS);
+            case EVENT -> navigationManager.navigate(ScreenId.EVENTS);
+            case MEETING -> navigationManager.navigate(ScreenId.MEETINGS);
+            case TASK -> navigationManager.navigate(ScreenId.TASKS);
         }
     }
 

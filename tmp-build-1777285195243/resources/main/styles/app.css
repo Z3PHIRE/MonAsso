@@ -1,0 +1,412 @@
+.root {
+    -app-primary: #355f8e;
+    -app-secondary: #f3f6fa;
+    -app-accent: #5b9f8a;
+
+    -surface: #ffffff;
+    -surface-soft: #f8fafd;
+    -surface-muted: #edf2f7;
+    -border-color: #d8e1ec;
+    -text-main: #263648;
+    -text-muted: #6b7788;
+    -danger: #cc4e4e;
+
+    -fx-font-family: "Segoe UI";
+    -fx-background-color: -app-secondary;
+}
+
+.app-root {
+    -fx-background-color: -app-secondary;
+}
+
+.compact-mode .content-root {
+    -fx-padding: 14;
+    -fx-spacing: 10;
+}
+
+.compact-mode .panel-card {
+    -fx-padding: 12;
+    -fx-spacing: 8;
+}
+
+.compact-mode .screen-title {
+    -fx-font-size: 22px;
+}
+
+.content-host {
+    -fx-background-color: transparent;
+}
+
+.top-bar {
+    -fx-padding: 12 16 12 16;
+    -fx-background-color: -surface;
+    -fx-border-color: -border-color;
+    -fx-border-width: 0 0 1 0;
+    -fx-alignment: center-left;
+}
+
+.app-title {
+    -fx-font-size: 22px;
+    -fx-font-weight: 800;
+    -fx-text-fill: -app-primary;
+}
+
+.top-context-label {
+    -fx-font-size: 12px;
+    -fx-text-fill: -text-muted;
+}
+
+.status-pill {
+    -fx-font-size: 11px;
+    -fx-font-weight: 700;
+    -fx-text-fill: -app-primary;
+    -fx-background-color: derive(-app-secondary, 4%);
+    -fx-border-color: derive(-app-primary, 70%);
+    -fx-border-radius: 16;
+    -fx-background-radius: 16;
+    -fx-padding: 5 9 5 9;
+}
+
+.sidebar {
+    -fx-background-color: linear-gradient(to bottom, derive(-app-primary, 4%), derive(-app-primary, -10%));
+    -fx-padding: 14;
+    -fx-spacing: 8;
+    -fx-pref-width: 232;
+}
+
+.sidebar-logo {
+    -fx-background-color: rgba(255, 255, 255, 0.18);
+    -fx-background-radius: 12;
+    -fx-padding: 10;
+}
+
+.sidebar-section-title {
+    -fx-text-fill: white;
+    -fx-font-size: 12px;
+    -fx-font-weight: 800;
+}
+
+.nav-button {
+    -fx-background-color: transparent;
+    -fx-text-fill: white;
+    -fx-alignment: center-left;
+    -fx-padding: 8 10 8 10;
+    -fx-background-radius: 10;
+    -fx-cursor: hand;
+}
+
+.nav-button:hover {
+    -fx-background-color: rgba(255, 255, 255, 0.14);
+}
+
+.nav-button-active {
+    -fx-background-color: rgba(255, 255, 255, 0.24);
+}
+
+.nav-label {
+    -fx-text-fill: white;
+    -fx-font-size: 13px;
+    -fx-font-weight: 700;
+}
+
+.nav-icon-badge {
+    -fx-background-color: rgba(255, 255, 255, 0.25);
+    -fx-min-width: 26;
+    -fx-min-height: 26;
+    -fx-max-width: 26;
+    -fx-max-height: 26;
+    -fx-background-radius: 13;
+}
+
+.nav-icon-text {
+    -fx-text-fill: white;
+    -fx-font-size: 10px;
+    -fx-font-weight: 800;
+}
+
+.content-root {
+    -fx-padding: 18;
+    -fx-spacing: 14;
+}
+
+.screen-title {
+    -fx-font-size: 24px;
+    -fx-font-weight: 800;
+    -fx-text-fill: -app-primary;
+}
+
+.screen-subtitle {
+    -fx-font-size: 13px;
+    -fx-text-fill: -text-muted;
+}
+
+.panel-card {
+    -fx-background-color: -surface;
+    -fx-background-radius: 12;
+    -fx-border-color: -border-color;
+    -fx-border-radius: 12;
+    -fx-padding: 14;
+    -fx-spacing: 10;
+}
+
+.folded-panel {
+    -fx-background-color: transparent;
+}
+
+.folded-panel > .title {
+    -fx-background-color: -surface;
+    -fx-border-color: -border-color;
+    -fx-border-radius: 10;
+    -fx-background-radius: 10;
+}
+
+.folded-panel > .content {
+    -fx-border-color: -border-color;
+    -fx-background-color: transparent;
+    -fx-border-radius: 0 0 10 10;
+}
+
+.section-label {
+    -fx-font-size: 15px;
+    -fx-font-weight: 800;
+    -fx-text-fill: -app-primary;
+}
+
+.muted-text {
+    -fx-font-size: 12px;
+    -fx-text-fill: -text-muted;
+}
+
+.action-row {
+    -fx-alignment: center-left;
+}
+
+.dashboard-cards {
+    -fx-pref-wrap-length: 1100;
+}
+
+.stat-card {
+    -fx-background-color: -surface;
+    -fx-background-radius: 12;
+    -fx-border-color: -border-color;
+    -fx-border-radius: 12;
+    -fx-padding: 12;
+    -fx-min-width: 210;
+    -fx-max-width: 260;
+}
+
+.metric-icon-badge {
+    -fx-background-color: derive(-app-primary, 78%);
+    -fx-min-width: 26;
+    -fx-min-height: 26;
+    -fx-max-width: 26;
+    -fx-max-height: 26;
+    -fx-background-radius: 13;
+}
+
+.metric-icon-text {
+    -fx-text-fill: -app-primary;
+    -fx-font-size: 10px;
+    -fx-font-weight: 800;
+}
+
+.stat-title {
+    -fx-font-size: 12px;
+    -fx-font-weight: 700;
+    -fx-text-fill: -text-muted;
+}
+
+.stat-value {
+    -fx-font-size: 28px;
+    -fx-font-weight: 800;
+    -fx-text-fill: -app-primary;
+}
+
+.stat-helper {
+    -fx-font-size: 12px;
+    -fx-text-fill: -text-muted;
+}
+
+.event-list {
+    -fx-spacing: 8;
+}
+
+.event-list-item {
+    -fx-background-color: -surface-soft;
+    -fx-background-radius: 8;
+    -fx-padding: 8 10 8 10;
+    -fx-alignment: center-left;
+}
+
+.event-date-chip {
+    -fx-background-color: derive(-app-primary, 82%);
+    -fx-background-radius: 14;
+    -fx-padding: 3 8 3 8;
+    -fx-text-fill: -app-primary;
+    -fx-font-size: 11px;
+    -fx-font-weight: 700;
+}
+
+.event-name {
+    -fx-font-size: 13px;
+    -fx-font-weight: 700;
+    -fx-text-fill: -text-main;
+}
+
+.progress-meter {
+    -fx-accent: -app-accent;
+}
+
+.primary-button,
+.accent-button,
+.ghost-button,
+.danger-button,
+.menu-button {
+    -fx-font-weight: 700;
+    -fx-background-radius: 9;
+    -fx-padding: 8 12 8 12;
+    -fx-min-height: 34;
+    -fx-cursor: hand;
+}
+
+.primary-button {
+    -fx-background-color: -app-primary;
+    -fx-text-fill: white;
+}
+
+.primary-button:hover {
+    -fx-background-color: derive(-app-primary, 12%);
+}
+
+.accent-button {
+    -fx-background-color: -app-accent;
+    -fx-text-fill: white;
+}
+
+.accent-button:hover {
+    -fx-background-color: derive(-app-accent, -8%);
+}
+
+.ghost-button,
+.menu-button.ghost-button {
+    -fx-background-color: -surface-muted;
+    -fx-text-fill: -text-main;
+}
+
+.ghost-button:hover,
+.menu-button.ghost-button:hover {
+    -fx-background-color: derive(-surface-muted, -4%);
+}
+
+.danger-button {
+    -fx-background-color: -danger;
+    -fx-text-fill: white;
+}
+
+.danger-button:hover {
+    -fx-background-color: derive(-danger, -10%);
+}
+
+.text-field,
+.text-area,
+.date-picker,
+.combo-box,
+.color-picker {
+    -fx-background-radius: 8;
+    -fx-border-radius: 8;
+    -fx-border-color: -border-color;
+    -fx-background-color: -surface;
+}
+
+.text-field,
+.date-picker,
+.combo-box,
+.color-picker {
+    -fx-min-height: 34;
+}
+
+.text-area {
+    -fx-min-height: 60;
+}
+
+.field-label {
+    -fx-font-size: 12px;
+    -fx-font-weight: 700;
+    -fx-text-fill: -text-main;
+}
+
+.form-grid {
+    -fx-hgap: 10;
+    -fx-vgap: 10;
+}
+
+.table-view,
+.app-table {
+    -fx-border-color: -border-color;
+    -fx-border-radius: 10;
+    -fx-background-radius: 10;
+    -fx-background-color: -surface;
+}
+
+.table-view .column-header-background {
+    -fx-background-color: derive(-app-secondary, 4%);
+}
+
+.table-view .column-header,
+.table-view .filler {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent transparent -border-color transparent;
+}
+
+.table-view .column-header .label {
+    -fx-text-fill: -app-primary;
+    -fx-font-size: 11px;
+    -fx-font-weight: 800;
+}
+
+.table-row-cell {
+    -fx-border-color: transparent;
+    -fx-background-color: -surface;
+}
+
+.table-row-cell:filled:selected {
+    -fx-background-color: derive(-app-primary, 85%);
+}
+
+.light-tabs > .tab-header-area .tab-header-background {
+    -fx-background-color: transparent;
+}
+
+.light-tabs .tab {
+    -fx-background-color: -surface-muted;
+    -fx-background-radius: 8 8 0 0;
+}
+
+.light-tabs .tab:selected {
+    -fx-background-color: -surface;
+}
+
+.logo-preview {
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.08), 7, 0.1, 0, 1);
+}
+
+.theme-preview-root {
+    -fx-background-color: derive(-app-secondary, 4%);
+    -fx-background-radius: 10;
+    -fx-border-color: derive(-app-primary, 76%);
+    -fx-border-radius: 10;
+}
+
+.theme-preview-title {
+    -fx-font-size: 18px;
+    -fx-font-weight: 800;
+    -fx-text-fill: -app-primary;
+}
+
+.theme-preview-card {
+    -fx-background-color: white;
+    -fx-background-radius: 8;
+    -fx-border-color: derive(-app-primary, 80%);
+    -fx-border-radius: 8;
+    -fx-padding: 10;
+}

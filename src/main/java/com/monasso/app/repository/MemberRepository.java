@@ -1,6 +1,7 @@
 package com.monasso.app.repository;
 
 import com.monasso.app.model.Member;
+import com.monasso.app.model.PersonType;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -22,7 +23,25 @@ public class MemberRepository {
 
     public List<Member> findByCriteria(String query, Boolean activeFilter) {
         StringBuilder sql = new StringBuilder("""
-                SELECT id, first_name, last_name, email, phone, address, join_date, is_active, notes
+                SELECT
+                    id,
+                    first_name,
+                    last_name,
+                    person_type,
+                    email,
+                    phone,
+                    is_active,
+                    address,
+                    join_date,
+                    association_role,
+                    skills,
+                    availability,
+                    notes,
+                    emergency_contact,
+                    clothing_size,
+                    certifications,
+                    constraints_info,
+                    linked_documents
                 FROM members
                 WHERE 1 = 1
                 """);
@@ -40,9 +59,23 @@ public class MemberRepository {
                         OR LOWER(COALESCE(email, '')) LIKE ?
                         OR LOWER(COALESCE(phone, '')) LIKE ?
                         OR LOWER(COALESCE(address, '')) LIKE ?
+                        OR LOWER(COALESCE(association_role, '')) LIKE ?
+                        OR LOWER(COALESCE(skills, '')) LIKE ?
+                        OR LOWER(COALESCE(availability, '')) LIKE ?
+                        OR LOWER(COALESCE(notes, '')) LIKE ?
+                        OR LOWER(COALESCE(emergency_contact, '')) LIKE ?
+                        OR LOWER(COALESCE(certifications, '')) LIKE ?
+                        OR LOWER(COALESCE(constraints_info, '')) LIKE ?
                      )
                     """);
             String like = "%" + query.trim().toLowerCase() + "%";
+            parameters.add(like);
+            parameters.add(like);
+            parameters.add(like);
+            parameters.add(like);
+            parameters.add(like);
+            parameters.add(like);
+            parameters.add(like);
             parameters.add(like);
             parameters.add(like);
             parameters.add(like);
@@ -68,7 +101,25 @@ public class MemberRepository {
 
     public Optional<Member> findById(long memberId) {
         String sql = """
-                SELECT id, first_name, last_name, email, phone, address, join_date, is_active, notes
+                SELECT
+                    id,
+                    first_name,
+                    last_name,
+                    person_type,
+                    email,
+                    phone,
+                    is_active,
+                    address,
+                    join_date,
+                    association_role,
+                    skills,
+                    availability,
+                    notes,
+                    emergency_contact,
+                    clothing_size,
+                    certifications,
+                    constraints_info,
+                    linked_documents
                 FROM members
                 WHERE id = ?
                 """;
@@ -88,8 +139,26 @@ public class MemberRepository {
 
     public Member create(Member member) {
         String sql = """
-                INSERT INTO members(first_name, last_name, email, phone, address, join_date, is_active, notes)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO members(
+                    first_name,
+                    last_name,
+                    person_type,
+                    email,
+                    phone,
+                    is_active,
+                    address,
+                    join_date,
+                    association_role,
+                    skills,
+                    availability,
+                    notes,
+                    emergency_contact,
+                    clothing_size,
+                    certifications,
+                    constraints_info,
+                    linked_documents
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """;
         try (Connection connection = databaseManager.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
@@ -101,12 +170,21 @@ public class MemberRepository {
                             keys.getLong(1),
                             member.firstName(),
                             member.lastName(),
+                            member.personType(),
                             member.email(),
                             member.phone(),
+                            member.active(),
                             member.address(),
                             member.joinDate(),
-                            member.active(),
-                            member.notes()
+                            member.associationRole(),
+                            member.skills(),
+                            member.availability(),
+                            member.notes(),
+                            member.emergencyContact(),
+                            member.clothingSize(),
+                            member.certifications(),
+                            member.constraintsInfo(),
+                            member.linkedDocuments()
                     );
                 }
             }
@@ -119,13 +197,29 @@ public class MemberRepository {
     public Member update(Member member) {
         String sql = """
                 UPDATE members
-                SET first_name = ?, last_name = ?, email = ?, phone = ?, address = ?, join_date = ?, is_active = ?, notes = ?
+                SET first_name = ?,
+                    last_name = ?,
+                    person_type = ?,
+                    email = ?,
+                    phone = ?,
+                    is_active = ?,
+                    address = ?,
+                    join_date = ?,
+                    association_role = ?,
+                    skills = ?,
+                    availability = ?,
+                    notes = ?,
+                    emergency_contact = ?,
+                    clothing_size = ?,
+                    certifications = ?,
+                    constraints_info = ?,
+                    linked_documents = ?
                 WHERE id = ?
                 """;
         try (Connection connection = databaseManager.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
             bindMember(statement, member);
-            statement.setLong(9, member.id());
+            statement.setLong(18, member.id());
             int updated = statement.executeUpdate();
             if (updated == 0) {
                 throw new IllegalStateException("Le membre n'existe plus.");
@@ -172,12 +266,21 @@ public class MemberRepository {
     private void bindMember(PreparedStatement statement, Member member) throws SQLException {
         statement.setString(1, member.firstName());
         statement.setString(2, member.lastName());
-        statement.setString(3, member.email());
-        statement.setString(4, member.phone());
-        statement.setString(5, member.address());
-        statement.setString(6, member.joinDate().toString());
-        statement.setInt(7, member.active() ? 1 : 0);
-        statement.setString(8, member.notes());
+        statement.setString(3, (member.personType() == null ? PersonType.MEMBER : member.personType()).name());
+        statement.setString(4, member.email());
+        statement.setString(5, member.phone());
+        statement.setInt(6, member.active() ? 1 : 0);
+        statement.setString(7, member.address());
+        statement.setString(8, member.joinDate().toString());
+        statement.setString(9, member.associationRole());
+        statement.setString(10, member.skills());
+        statement.setString(11, member.availability());
+        statement.setString(12, member.notes());
+        statement.setString(13, member.emergencyContact());
+        statement.setString(14, member.clothingSize());
+        statement.setString(15, member.certifications());
+        statement.setString(16, member.constraintsInfo());
+        statement.setString(17, member.linkedDocuments());
     }
 
     private void bindParameters(PreparedStatement statement, List<Object> parameters) throws SQLException {
@@ -187,16 +290,26 @@ public class MemberRepository {
     }
 
     private Member mapRow(ResultSet rs) throws SQLException {
+        String joinDateRaw = rs.getString("join_date");
         return new Member(
                 rs.getLong("id"),
                 rs.getString("first_name"),
                 rs.getString("last_name"),
+                PersonType.fromDatabase(rs.getString("person_type")),
                 rs.getString("email"),
                 rs.getString("phone"),
-                rs.getString("address"),
-                LocalDate.parse(rs.getString("join_date")),
                 rs.getInt("is_active") == 1,
-                rs.getString("notes")
+                rs.getString("address"),
+                joinDateRaw == null || joinDateRaw.isBlank() ? LocalDate.now() : LocalDate.parse(joinDateRaw),
+                rs.getString("association_role"),
+                rs.getString("skills"),
+                rs.getString("availability"),
+                rs.getString("notes"),
+                rs.getString("emergency_contact"),
+                rs.getString("clothing_size"),
+                rs.getString("certifications"),
+                rs.getString("constraints_info"),
+                rs.getString("linked_documents")
         );
     }
 }

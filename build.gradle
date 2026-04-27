@@ -7,6 +7,11 @@ plugins {
 group = 'com.monasso'
 version = '0.1.0'
 
+def customBuildDir = findProperty('buildDir')
+if (customBuildDir != null && !customBuildDir.toString().isBlank()) {
+    layout.buildDirectory.set(layout.projectDirectory.dir(customBuildDir.toString()))
+}
+
 def windowsIconFile = file('assets/branding/icon.ico')
 def executableDir = layout.buildDirectory.dir('executable')
 
@@ -22,6 +27,18 @@ java {
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
     options.release = 21
+    options.incremental = false
+    options.fork = true
+    def configuredJavaHome = System.getenv('JAVA_HOME')
+    def fallbackJavac = file('C:/Program Files/Java/jdk-24/bin/javac.exe')
+    if (configuredJavaHome != null && !configuredJavaHome.isBlank()) {
+        def fromJavaHome = file("${configuredJavaHome}/bin/javac.exe")
+        if (fromJavaHome.exists()) {
+            options.forkOptions.executable = fromJavaHome.absolutePath
+        }
+    } else if (fallbackJavac.exists()) {
+        options.forkOptions.executable = fallbackJavac.absolutePath
+    }
 }
 
 javafx {
@@ -39,6 +56,15 @@ dependencies {
 
     testImplementation 'org.junit.jupiter:junit-jupiter:5.10.2'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.10.2'
+}
+
+configurations {
+    testCompileClasspath {
+        exclude group: 'org.openjfx'
+    }
+    testRuntimeClasspath {
+        exclude group: 'org.openjfx'
+    }
 }
 
 application {

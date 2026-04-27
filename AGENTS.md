@@ -1,6 +1,6 @@
 # AGENTS
 
-Ce fichier definit les regles permanentes du projet MonAsso.
+Ce fichier fixe les regles permanentes du projet MonAsso.
 
 ## 1) Cadre non negociable
 
@@ -45,9 +45,10 @@ Regles:
 - Les repositories gerent l'acces SQLite uniquement.
 - Les classes UI/controller ne portent pas de logique metier lourde.
 - Les validations sont centralisees et reutilisables.
-- Les erreurs doivent etre gerees proprement (messages utilisateur + logs utiles).
-- Le schema SQLite doit rester migrable et compatible avec l'existant.
-- Branding dans `assets/branding` (logo, icone, couleurs, nom applique).
+- Les erreurs sont gerees proprement (messages utilisateur + logs utiles).
+- Le schema SQLite reste migrable et compatible avec l'existant.
+- Le branding est dans `assets/branding` (logo, icone, couleurs, nom applique).
+- Le logo et les couleurs sont personnalisables sans toucher au code metier.
 
 ## 4) Conventions de nommage
 
@@ -60,12 +61,13 @@ Regles:
 
 ## 5) Regles UX permanentes
 
-- Interface legere, claire, sans surcharge.
+- Interface legere et visuel propre.
+- Peu de surcharge.
 - Actions principales visibles en priorite.
+- Ecrans simples a comprendre.
 - Informations principales d'abord.
-- Details avances dans sections secondaires (onglets, accordions, panneaux repliables, menus contextuels).
-- Parcours simple et comprehensible immediatement.
-- Mode compact / mode detaille quand pertinent.
+- Details avances dans des sections secondaires (onglets, accordions, panneaux repliables, menus contextuels).
+- Mode compact et mode detaille quand pertinent.
 - Navigation lisible et stable.
 
 ## 6) Regles metier permanentes
@@ -92,10 +94,10 @@ Obligatoires:
 
 Avant de conclure une etape:
 
-1. verifier compilation
-2. verifier tests utiles
-3. verifier non regression des flux critiques
-4. verifier packaging Windows cible
+1. Verifier compilation.
+2. Verifier tests utiles.
+3. Verifier non regression des flux critiques.
+4. Verifier packaging Windows cible.
 
 Commandes de reference:
 
@@ -103,7 +105,7 @@ Commandes de reference:
 - `.\gradlew.bat run --no-daemon --no-configuration-cache`
 - `.\gradlew.bat prepareExecutableJar packageWindows --no-daemon --no-configuration-cache`
 
-Si l'environnement Windows/OneDrive verrouille des fichiers, utiliser un `GRADLE_USER_HOME` hors OneDrive pour fiabiliser l'execution.
+Si Windows/OneDrive verrouille des fichiers, utiliser un `GRADLE_USER_HOME` hors OneDrive pour fiabiliser l'execution.
 
 ## 8) Definition de "termine"
 
@@ -116,4 +118,3 @@ Une tache est terminee seulement si:
 - les fonctionnalites demandees sont reellement implementees
 - aucune regression evidente n'est introduite
 - aucun TODO n'est laisse dans le code
-

@@ -1,25 +1,25 @@
 package com.monasso.app.ui.screen;
 
+import com.monasso.app.model.ContributionReminder;
 import com.monasso.app.model.DashboardMetrics;
-import com.monasso.app.model.Event;
+import com.monasso.app.model.DashboardScheduleItem;
+import com.monasso.app.model.DashboardTaskItem;
 import com.monasso.app.service.DashboardService;
-import com.monasso.app.ui.component.StatCard;
 import javafx.geometry.Insets;
-import javafx.scene.control.Button;
 import javafx.scene.control.Label;
-import javafx.scene.control.Separator;
-import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 import java.util.Locale;
 import java.util.function.Consumer;
 
 public class DashboardScreen extends VBox {
 
-    private static final DateTimeFormatter EVENT_DATE_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-    private static final DateTimeFormatter EVENT_TIME_FORMAT = DateTimeFormatter.ofPattern("HH:mm");
+    private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+    private static final DateTimeFormatter TIME_FORMAT = DateTimeFormatter.ofPattern("HH:mm");
 
     public enum QuickAction {
         ADD_PERSON,
@@ -30,16 +30,15 @@ public class DashboardScreen extends VBox {
     }
 
     private final DashboardService dashboardService;
+    @SuppressWarnings("unused")
     private final Consumer<QuickAction> quickActionHandler;
 
-    private final StatCard membersCard = new StatCard("Personnes actives", "PS", "0", "Actifs sur total");
-    private final StatCard upcomingEventsCard = new StatCard("Evenements a venir", "EV", "0", "Dans le calendrier");
-    private final StatCard paidContributionsCard = new StatCard("Cotisations payees", "OK", "0", "Membres a jour");
-    private final StatCard pendingContributionsCard = new StatCard("Cotisations en attente", "AT", "0", "Relances utiles");
-    private final StatCard collectedCard = new StatCard("Total collecte", "EU", "0 EUR", "Periode courante");
-
-    private final VBox upcomingEventsList = new VBox(8);
-    private final Label coverageLabel = new Label();
+    private final VBox todayList = new VBox(6);
+    private final VBox upcomingList = new VBox(6);
+    private final VBox urgentTasksList = new VBox(6);
+    private final VBox remindersList = new VBox(6);
+    private final VBox eventsToMonitorList = new VBox(6);
+    private final VBox nearbyMeetingsList = new VBox(6);
 
     public DashboardScreen(DashboardService dashboardService, Consumer<QuickAction> quickActionHandler) {
         this.dashboardService = dashboardService;
@@ -52,113 +51,139 @@ public class DashboardScreen extends VBox {
         Label title = new Label("Tableau de bord");
         title.getStyleClass().add("screen-title");
 
-        Label subtitle = new Label("Indicateurs reels de l'association, relies a SQLite.");
+        Label subtitle = new Label("Vue quotidienne: aujourd'hui, a venir, urgences, relances et points de suivi.");
         subtitle.getStyleClass().add("screen-subtitle");
         subtitle.setWrapText(true);
 
-        HBox quickActions = createQuickActions();
-
-        FlowPane cards = new FlowPane();
-        cards.getStyleClass().add("dashboard-cards");
-        cards.setHgap(12);
-        cards.setVgap(12);
-        cards.getChildren().addAll(
-                membersCard,
-                upcomingEventsCard,
-                paidContributionsCard,
-                pendingContributionsCard,
-                collectedCard
+        HBox firstRow = new HBox(
+                12,
+                createWidget("Aujourd'hui", "Elements du jour", todayList),
+                createWidget("A venir", "Prochains 14 jours", upcomingList),
+                createWidget("Taches urgentes", "Echeances sur 7 jours", urgentTasksList)
         );
+        firstRow.getStyleClass().add("action-row");
 
-        VBox upcomingPanel = new VBox(10);
-        upcomingPanel.getStyleClass().add("panel-card");
-        Label upcomingTitle = new Label("Prochains evenements");
-        upcomingTitle.getStyleClass().add("section-label");
-        Label upcomingHint = new Label("Les 5 prochaines dates planifiees.");
-        upcomingHint.getStyleClass().add("muted-text");
-        upcomingEventsList.getStyleClass().add("event-list");
-        coverageLabel.getStyleClass().add("screen-subtitle");
-        upcomingPanel.getChildren().addAll(upcomingTitle, upcomingHint, new Separator(), upcomingEventsList, coverageLabel);
+        HBox secondRow = new HBox(
+                12,
+                createWidget("Cotisations a relancer", "Membres actifs non regles", remindersList),
+                createWidget("Evenements a surveiller", "Prochains evenements", eventsToMonitorList),
+                createWidget("Reunions proches", "Prochaines reunions", nearbyMeetingsList)
+        );
+        secondRow.getStyleClass().add("action-row");
 
-        getChildren().addAll(title, subtitle, quickActions, cards, upcomingPanel);
+        getChildren().addAll(title, subtitle, firstRow, secondRow);
         refreshMetrics();
     }
 
-    private HBox createQuickActions() {
-        HBox row = new HBox(10);
-        row.getStyleClass().addAll("panel-card", "action-row");
-        row.getChildren().addAll(
-                createQuickActionButton("Ajouter une personne", QuickAction.ADD_PERSON),
-                createQuickActionButton("Creer un evenement", QuickAction.CREATE_EVENT),
-                createQuickActionButton("Creer une reunion", QuickAction.CREATE_MEETING),
-                createQuickActionButton("Enregistrer une cotisation", QuickAction.RECORD_CONTRIBUTION),
-                createQuickActionButton("Exporter", QuickAction.EXPORT_DATA)
-        );
-        return row;
-    }
+    private VBox createWidget(String title, String hint, VBox listContainer) {
+        VBox widget = new VBox(8);
+        widget.getStyleClass().add("panel-card");
+        widget.setMinWidth(0);
 
-    private Button createQuickActionButton(String label, QuickAction action) {
-        Button button = new Button(label);
-        button.getStyleClass().add("primary-button");
-        button.setOnAction(event -> quickActionHandler.accept(action));
-        return button;
+        Label widgetTitle = new Label(title);
+        widgetTitle.getStyleClass().add("section-label");
+
+        Label widgetHint = new Label(hint);
+        widgetHint.getStyleClass().add("muted-text");
+
+        listContainer.getStyleClass().add("event-list");
+        widget.getChildren().addAll(widgetTitle, widgetHint, listContainer);
+        HBox.setHgrow(widget, Priority.ALWAYS);
+        return widget;
     }
 
     private void refreshMetrics() {
         DashboardMetrics metrics = dashboardService.getMetrics();
 
-        membersCard.setValue(String.valueOf(metrics.activeMembers()));
-        membersCard.setHelperText(metrics.activeMembers() + " actifs / " + metrics.totalMembers() + " personnes");
-
-        paidContributionsCard.setValue(String.valueOf(metrics.paidContributions()));
-        paidContributionsCard.setHelperText("Periode " + metrics.currentPeriod());
-
-        pendingContributionsCard.setValue(String.valueOf(metrics.pendingContributions()));
-        pendingContributionsCard.setHelperText(metrics.pendingContributions() == 0 ? "Aucune relance" : "Relances necessaires");
-
-        upcomingEventsCard.setValue(String.valueOf(metrics.upcomingEventsCount()));
-        upcomingEventsCard.setHelperText("Calendrier des prochaines dates");
-
-        collectedCard.setValue(String.format(Locale.FRANCE, "%.2f EUR", metrics.totalContributionAmount()));
-        collectedCard.setHelperText("Periode " + metrics.currentPeriod());
-        double ratio = metrics.activeMembers() == 0 ? 0 : (double) metrics.paidContributions() / metrics.activeMembers();
-        coverageLabel.setText(String.format(Locale.FRANCE,
-                "Couverture cotisations: %.0f%% (%d/%d membres actifs)",
-                ratio * 100,
-                metrics.paidContributions(),
-                metrics.activeMembers()));
-
-        refreshUpcomingEvents(metrics);
+        renderScheduleList(todayList, metrics.todayItems(), "Aucun element aujourd'hui.");
+        renderScheduleList(upcomingList, metrics.upcomingItems(), "Aucun element a venir.");
+        renderTaskList(urgentTasksList, metrics.urgentTaskItems(), "Aucune tache urgente.");
+        renderContributionList(remindersList, metrics.contributionReminders(), "Aucune relance necessaire.");
+        renderScheduleList(eventsToMonitorList, metrics.eventsToMonitor(), "Aucun evenement a surveiller.");
+        renderScheduleList(nearbyMeetingsList, metrics.nearbyMeetingItems(), "Aucune reunion proche.");
     }
 
-    private void refreshUpcomingEvents(DashboardMetrics metrics) {
-        upcomingEventsList.getChildren().clear();
-        if (metrics.upcomingEvents().isEmpty()) {
-            Label empty = new Label("Aucun evenement a venir.");
-            empty.getStyleClass().add("screen-subtitle");
-            upcomingEventsList.getChildren().add(empty);
+    private void renderScheduleList(VBox target, List<DashboardScheduleItem> items, String emptyText) {
+        target.getChildren().clear();
+        if (items == null || items.isEmpty()) {
+            Label empty = new Label(emptyText);
+            empty.getStyleClass().add("muted-text");
+            target.getChildren().add(empty);
             return;
         }
 
-        for (Event event : metrics.upcomingEvents()) {
-            HBox row = new HBox(10);
-            row.getStyleClass().add("event-list-item");
+        int max = Math.min(items.size(), 6);
+        for (int i = 0; i < max; i++) {
+            DashboardScheduleItem item = items.get(i);
+            String start = item.startTime() == null ? "--:--" : TIME_FORMAT.format(item.startTime());
+            String end = item.endTime() == null ? "--:--" : TIME_FORMAT.format(item.endTime());
+            String label = item.type().label()
+                    + " | "
+                    + DATE_FORMAT.format(item.date())
+                    + " "
+                    + start
+                    + "-"
+                    + end
+                    + " | "
+                    + item.title();
+            if (item.statusLabel() != null && !item.statusLabel().isBlank()) {
+                label = label + " | " + item.statusLabel();
+            }
+            Label line = new Label(label);
+            line.getStyleClass().add("screen-subtitle");
+            line.setWrapText(true);
+            target.getChildren().add(line);
+        }
+    }
 
-            Label dateLabel = new Label(EVENT_DATE_FORMAT.format(event.eventDate()));
-            dateLabel.getStyleClass().add("event-date-chip");
+    private void renderTaskList(VBox target, List<DashboardTaskItem> items, String emptyText) {
+        target.getChildren().clear();
+        if (items == null || items.isEmpty()) {
+            Label empty = new Label(emptyText);
+            empty.getStyleClass().add("muted-text");
+            target.getChildren().add(empty);
+            return;
+        }
 
-            VBox details = new VBox(2);
-            Label nameLabel = new Label(event.title() + " - " + EVENT_TIME_FORMAT.format(event.eventTime()));
-            nameLabel.getStyleClass().add("event-name");
+        int max = Math.min(items.size(), 8);
+        for (int i = 0; i < max; i++) {
+            DashboardTaskItem item = items.get(i);
+            String due = item.dueDate() == null ? "Sans echeance" : item.dueDate().toString();
+            String assignee = item.assigneeName() == null || item.assigneeName().isBlank() ? "Non assignee" : item.assigneeName();
+            String linked = item.linkedLabel() == null || item.linkedLabel().isBlank() ? "Sans lien" : item.linkedLabel();
+            String label = String.format(
+                    Locale.FRANCE,
+                    "%s | %s | %s | %s | %s",
+                    item.priority().label(),
+                    due,
+                    assignee,
+                    linked,
+                    item.title()
+            );
+            Label line = new Label(label);
+            line.getStyleClass().add("screen-subtitle");
+            line.setWrapText(true);
+            target.getChildren().add(line);
+        }
+    }
 
-            String location = event.location() == null || event.location().isBlank() ? "Lieu non renseigne" : event.location();
-            String capacityInfo = event.capacity() == null ? "capacite libre" : event.participantCount() + "/" + event.capacity() + " participants";
-            Label locationLabel = new Label(location + " | " + capacityInfo);
-            locationLabel.getStyleClass().add("muted-text");
-            details.getChildren().addAll(nameLabel, locationLabel);
+    private void renderContributionList(VBox target, List<ContributionReminder> items, String emptyText) {
+        target.getChildren().clear();
+        if (items == null || items.isEmpty()) {
+            Label empty = new Label(emptyText);
+            empty.getStyleClass().add("muted-text");
+            target.getChildren().add(empty);
+            return;
+        }
 
-            row.getChildren().addAll(dateLabel, details);
-            upcomingEventsList.getChildren().add(row);
+        int max = Math.min(items.size(), 8);
+        for (int i = 0; i < max; i++) {
+            ContributionReminder item = items.get(i);
+            String email = item.email() == null || item.email().isBlank() ? "sans email" : item.email();
+            Label line = new Label(item.memberName() + " | " + email);
+            line.getStyleClass().add("screen-subtitle");
+            line.setWrapText(true);
+            target.getChildren().add(line);
         }
     }
 }

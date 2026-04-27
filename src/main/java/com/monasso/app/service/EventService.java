@@ -1,7 +1,9 @@
 package com.monasso.app.service;
 
+import com.monasso.app.model.ArchiveFilter;
 import com.monasso.app.model.Event;
 import com.monasso.app.model.Member;
+import com.monasso.app.model.ScheduleStatus;
 import com.monasso.app.repository.EventParticipantRepository;
 import com.monasso.app.repository.EventRepository;
 import com.monasso.app.repository.MemberRepository;
@@ -30,7 +32,11 @@ public class EventService {
     }
 
     public List<Event> getEvents(String searchQuery, boolean upcomingOnly) {
-        return eventRepository.findByCriteria(searchQuery, upcomingOnly);
+        return getEvents(searchQuery, upcomingOnly, ArchiveFilter.ACTIVE);
+    }
+
+    public List<Event> getEvents(String searchQuery, boolean upcomingOnly, ArchiveFilter archiveFilter) {
+        return eventRepository.findByCriteria(searchQuery, upcomingOnly, archiveFilter);
     }
 
     public List<Event> getUpcomingEvents(int limit) {
@@ -45,14 +51,86 @@ public class EventService {
             String description,
             Integer capacity
     ) {
+        LocalTime safeStart = time == null ? null : time;
+        LocalTime defaultEnd = safeStart == null ? null : safeStart.plusHours(2);
+        return addEvent(
+                title,
+                date,
+                safeStart,
+                defaultEnd,
+                location,
+                description,
+                capacity,
+                null,
+                ScheduleStatus.CONFIRMED,
+                null
+        );
+    }
+
+    public Event addEvent(
+            String title,
+            LocalDate date,
+            LocalTime startTime,
+            LocalTime endTime,
+            String location,
+            String description,
+            Integer capacity,
+            Long responsibleMemberId,
+            ScheduleStatus status,
+            String category
+    ) {
+        return addEvent(
+                title,
+                date,
+                startTime,
+                endTime,
+                location,
+                description,
+                capacity,
+                responsibleMemberId,
+                status,
+                category,
+                null,
+                null,
+                null,
+                null
+        );
+    }
+
+    public Event addEvent(
+            String title,
+            LocalDate date,
+            LocalTime startTime,
+            LocalTime endTime,
+            String location,
+            String description,
+            Integer capacity,
+            Long responsibleMemberId,
+            ScheduleStatus status,
+            String category,
+            String materials,
+            String logisticsNeeds,
+            String partners,
+            String internalNotes
+    ) {
         Event event = buildEvent(
                 0L,
                 title,
                 date,
-                time,
+                startTime,
+                endTime,
                 location,
                 description,
                 capacity,
+                responsibleMemberId,
+                null,
+                status,
+                category,
+                materials,
+                logisticsNeeds,
+                partners,
+                internalNotes,
+                false,
                 0
         );
         return eventRepository.create(event);
@@ -67,9 +145,76 @@ public class EventService {
             String description,
             Integer capacity
     ) {
+        LocalTime safeStart = time == null ? null : time;
+        LocalTime defaultEnd = safeStart == null ? null : safeStart.plusHours(2);
+        return updateEvent(
+                eventId,
+                title,
+                date,
+                safeStart,
+                defaultEnd,
+                location,
+                description,
+                capacity,
+                null,
+                ScheduleStatus.CONFIRMED,
+                null
+        );
+    }
+
+    public Event updateEvent(
+            long eventId,
+            String title,
+            LocalDate date,
+            LocalTime startTime,
+            LocalTime endTime,
+            String location,
+            String description,
+            Integer capacity,
+            Long responsibleMemberId,
+            ScheduleStatus status,
+            String category
+    ) {
+        return updateEvent(
+                eventId,
+                title,
+                date,
+                startTime,
+                endTime,
+                location,
+                description,
+                capacity,
+                responsibleMemberId,
+                status,
+                category,
+                null,
+                null,
+                null,
+                null
+        );
+    }
+
+    public Event updateEvent(
+            long eventId,
+            String title,
+            LocalDate date,
+            LocalTime startTime,
+            LocalTime endTime,
+            String location,
+            String description,
+            Integer capacity,
+            Long responsibleMemberId,
+            ScheduleStatus status,
+            String category,
+            String materials,
+            String logisticsNeeds,
+            String partners,
+            String internalNotes
+    ) {
         if (eventId <= 0) {
             throw new IllegalArgumentException("Identifiant evenement invalide.");
         }
+        Event existing = getEvent(eventId);
         long participantsCountValue = eventParticipantRepository.countParticipants(eventId);
         int currentParticipants = participantsCountValue > Integer.MAX_VALUE
                 ? Integer.MAX_VALUE
@@ -78,10 +223,20 @@ public class EventService {
                 eventId,
                 title,
                 date,
-                time,
+                startTime,
+                endTime,
                 location,
                 description,
                 capacity,
+                responsibleMemberId,
+                null,
+                status,
+                category,
+                materials,
+                logisticsNeeds,
+                partners,
+                internalNotes,
+                existing.archived(),
                 currentParticipants
         );
         if (event.capacity() != null && event.capacity() < event.participantCount()) {
@@ -97,6 +252,15 @@ public class EventService {
 
     public void deleteEvent(long eventId) {
         if (!eventRepository.deleteById(eventId)) {
+            throw new IllegalStateException("L'evenement n'existe plus.");
+        }
+    }
+
+    public void setArchived(long eventId, boolean archived) {
+        if (eventId <= 0) {
+            throw new IllegalArgumentException("Identifiant evenement invalide.");
+        }
+        if (!eventRepository.setArchived(eventId, archived)) {
             throw new IllegalStateException("L'evenement n'existe plus.");
         }
     }
@@ -139,32 +303,60 @@ public class EventService {
             long id,
             String title,
             LocalDate date,
-            LocalTime time,
+            LocalTime startTime,
+            LocalTime endTime,
             String location,
             String description,
             Integer capacity,
+            Long responsibleMemberId,
+            String responsibleName,
+            ScheduleStatus status,
+            String category,
+            String materials,
+            String logisticsNeeds,
+            String partners,
+            String internalNotes,
+            boolean archived,
             int participantCount
     ) {
         String safeTitle = ValidationUtils.requireText(title, "Le titre");
         if (date == null) {
             throw new IllegalArgumentException("La date de l'evenement est obligatoire.");
         }
-        if (time == null) {
-            throw new IllegalArgumentException("L'heure de l'evenement est obligatoire.");
+        if (startTime == null) {
+            throw new IllegalArgumentException("L'heure de debut de l'evenement est obligatoire.");
+        }
+        LocalTime safeEndTime = endTime == null ? startTime.plusHours(2) : endTime;
+        if (!safeEndTime.isAfter(startTime)) {
+            throw new IllegalArgumentException("L'heure de fin doit etre superieure a l'heure de debut.");
         }
         Integer safeCapacity = capacity;
         if (safeCapacity != null && safeCapacity <= 0) {
             throw new IllegalArgumentException("La capacite doit etre superieure a 0.");
+        }
+        if (responsibleMemberId != null) {
+            memberRepository.findById(responsibleMemberId)
+                    .orElseThrow(() -> new IllegalArgumentException("Responsable introuvable."));
         }
 
         return new Event(
                 id,
                 safeTitle,
                 date,
-                time,
+                startTime,
+                safeEndTime,
                 ValidationUtils.normalizeOptional(location),
                 ValidationUtils.normalizeOptional(description),
                 safeCapacity,
+                responsibleMemberId,
+                responsibleName,
+                status == null ? ScheduleStatus.CONFIRMED : status,
+                ValidationUtils.normalizeOptional(category),
+                ValidationUtils.normalizeOptional(materials),
+                ValidationUtils.normalizeOptional(logisticsNeeds),
+                ValidationUtils.normalizeOptional(partners),
+                ValidationUtils.normalizeOptional(internalNotes),
+                archived,
                 participantCount
         );
     }
