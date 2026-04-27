@@ -61,6 +61,7 @@ public class MembersScreen extends VBox {
 
     private final MemberService memberService;
     private final CustomCategoryService customCategoryService;
+    private final Runnable openCategoryManagerAction;
     private final ObservableList<Member> members = FXCollections.observableArrayList();
 
     private final TextField searchField = new TextField();
@@ -98,9 +99,14 @@ public class MembersScreen extends VBox {
     private TableColumn<Member, String> roleColumn;
     private long editingMemberId = -1L;
 
-    public MembersScreen(MemberService memberService, CustomCategoryService customCategoryService) {
+    public MembersScreen(
+            MemberService memberService,
+            CustomCategoryService customCategoryService,
+            Runnable openCategoryManagerAction
+    ) {
         this.memberService = memberService;
         this.customCategoryService = customCategoryService;
+        this.openCategoryManagerAction = openCategoryManagerAction == null ? () -> { } : openCategoryManagerAction;
 
         getStyleClass().add("content-root");
         setPadding(new Insets(20));
@@ -318,9 +324,16 @@ public class MembersScreen extends VBox {
         info.getStyleClass().add("muted-text");
         info.setWrapText(true);
 
+        Label pathHint = new Label("Configuration: Parametres > Categories personnalisables.");
+        pathHint.getStyleClass().add("muted-text");
+
+        Button manageButton = new Button("Gerer categories");
+        manageButton.getStyleClass().add("ghost-button");
+        manageButton.setOnAction(event -> openCategoryManagerAction.run());
+
         reloadCustomFieldInputs(Map.of());
 
-        panel.getChildren().addAll(info, customFieldsContainer);
+        panel.getChildren().addAll(info, pathHint, manageButton, customFieldsContainer);
         return panel;
     }
 

@@ -24,10 +24,14 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Parent;
 import javafx.scene.control.Button;
+import javafx.scene.control.CheckMenuItem;
 import javafx.scene.control.ContentDisplay;
 import javafx.scene.control.Label;
+import javafx.scene.control.Menu;
 import javafx.scene.control.MenuButton;
 import javafx.scene.control.MenuItem;
+import javafx.scene.control.ScrollPane;
+import javafx.scene.control.SeparatorMenuItem;
 import javafx.scene.control.ToggleButton;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.BorderPane;
@@ -37,12 +41,22 @@ import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 
-import java.util.Arrays;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.EnumMap;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 public class MainView {
+
+    private static final String NAV_ORDER_SETTING_KEY = "ui.nav.order";
+    private static final String NAV_HIDDEN_SETTING_KEY = "ui.nav.hidden";
+    private static final String NAV_COLLAPSED_SETTING_KEY = "ui.nav.collapsed";
+    private static final String NAV_VISIBLE_SETTING_KEY = "ui.nav.visible";
+    private static final int MAX_DIRECT_NAV_BUTTONS = 9;
 
     private static final Map<ScreenId, String> SCREEN_PICTOGRAMS = Map.ofEntries(
             Map.entry(ScreenId.WELCOME, "BI"),
@@ -60,7 +74,7 @@ public class MainView {
             Map.entry(ScreenId.SETTINGS, "PR"),
             Map.entry(ScreenId.PERSONALIZATION, "TH")
     );
-    private static final List<ScreenId> PRIMARY_SCREENS = Arrays.asList(
+    private static final List<ScreenId> DEFAULT_PRIMARY_SCREENS = List.of(
             ScreenId.DAILY_USE,
             ScreenId.DASHBOARD,
             ScreenId.SEARCH,
@@ -71,34 +85,48 @@ public class MainView {
             ScreenId.TASKS,
             ScreenId.DOCUMENTS,
             ScreenId.CONTRIBUTIONS,
-            ScreenId.EXPORTS
+            ScreenId.EXPORTS,
+            ScreenId.SETTINGS
     );
 
     private final AppContext appContext;
     private final BorderPane root = new BorderPane();
+    private final VBox sidebar = new VBox(10);
+    private final VBox navButtonsBox = new VBox(8);
+    private final MenuButton overflowMenu = new MenuButton("Autres modules");
+    private final MenuButton navConfigMenu = new MenuButton("Personnaliser le menu");
     private final Label appTitleLabel = new Label();
     private final ImageView logoView = new ImageView();
     private final Map<ScreenId, Button> navButtons = new EnumMap<>(ScreenId.class);
+    private final List<ScreenId> navOrder = new ArrayList<>();
+    private final Set<ScreenId> hiddenScreens = EnumSet.noneOf(ScreenId.class);
+    private ToggleButton sidebarToggleButton;
+    private boolean sidebarCollapsed;
+    private boolean sidebarVisible = true;
     private final NavigationManager navigationManager;
 
     public MainView(AppContext appContext) {
         this.appContext = appContext;
 
         root.getStyleClass().add("app-root");
-
-        HBox topBar = createTopBar();
-        VBox sidebar = createSidebar();
+        loadNavigationPreferences();
 
         StackPane contentPane = new StackPane();
         contentPane.getStyleClass().add("content-host");
         contentPane.setPadding(new Insets(0));
         navigationManager = new NavigationManager(contentPane);
+
+        HBox topBar = createTopBar();
+        createSidebar();
+
         configureNavigation();
         configureNavigationState();
 
         root.setTop(topBar);
         root.setLeft(sidebar);
         root.setCenter(contentPane);
+        applySidebarCollapsedState();
+        applySidebarVisibilityState();
 
         refreshBranding(appContext.brandingService());
         appContext.brandingService().brandingProperty().addListener((obs, oldConfig, newConfig) -> refreshBranding(appContext.brandingService()));
@@ -128,6 +156,16 @@ public class MainView {
         Label offlineTag = new Label("Mode local hors ligne");
         offlineTag.getStyleClass().add("status-pill");
 
+        sidebarToggleButton = new ToggleButton();
+        sidebarToggleButton.getStyleClass().add("ghost-button");
+        sidebarToggleButton.setSelected(!sidebarVisible);
+        updateSidebarToggleLabel();
+        sidebarToggleButton.setOnAction(event -> {
+            sidebarVisible = !sidebarToggleButton.isSelected();
+            applySidebarVisibilityState();
+            persistNavigationPreferences();
+        });
+
         ToggleButton compactModeToggle = new ToggleButton("Mode compact");
         compactModeToggle.getStyleClass().add("ghost-button");
         compactModeToggle.setOnAction(event -> setCompactMode(compactModeToggle.isSelected()));
@@ -140,18 +178,19 @@ public class MainView {
         dailyUseItem.setOnAction(event -> navigationManager.navigate(ScreenId.DAILY_USE));
         MenuItem settingsItem = new MenuItem("Parametres");
         settingsItem.setOnAction(event -> navigationManager.navigate(ScreenId.SETTINGS));
+        MenuItem categoriesItem = new MenuItem("Categories personnalisables");
+        categoriesItem.setOnAction(event -> openCategoryManager());
         MenuItem personalizationItem = new MenuItem("Personnalisation");
         personalizationItem.setOnAction(event -> navigationManager.navigate(ScreenId.PERSONALIZATION));
-        moreOptions.getItems().addAll(welcomeItem, dailyUseItem, settingsItem, personalizationItem);
+        moreOptions.getItems().addAll(welcomeItem, dailyUseItem, settingsItem, categoriesItem, personalizationItem);
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
-        topBar.getChildren().addAll(titleBlock, spacer, compactModeToggle, moreOptions, offlineTag);
+        topBar.getChildren().addAll(titleBlock, spacer, sidebarToggleButton, compactModeToggle, moreOptions, offlineTag);
         return topBar;
     }
 
-    private VBox createSidebar() {
-        VBox sidebar = new VBox(10);
+    private void createSidebar() {
         sidebar.getStyleClass().add("sidebar");
 
         VBox logoBlock = new VBox(10);
@@ -162,18 +201,37 @@ public class MainView {
         logoView.setFitHeight(80);
         logoView.setPreserveRatio(true);
 
-        Label navLabel = new Label("Navigation");
+        Label navLabel = new Label("Navigation principale");
         navLabel.getStyleClass().add("sidebar-section-title");
 
-        logoBlock.getChildren().addAll(logoView, navLabel);
-        sidebar.getChildren().add(logoBlock);
+        Button collapseButton = new Button("Reduire");
+        collapseButton.getStyleClass().add("ghost-button");
+        collapseButton.setOnAction(event -> {
+            sidebarCollapsed = !sidebarCollapsed;
+            applySidebarCollapsedState();
+            persistNavigationPreferences();
+        });
 
-        for (ScreenId screenId : PRIMARY_SCREENS) {
-            Button button = createNavButton(screenId);
-            navButtons.put(screenId, button);
-            sidebar.getChildren().add(button);
-        }
-        return sidebar;
+        HBox navHeader = new HBox(8, navLabel, collapseButton);
+        navHeader.getStyleClass().add("action-row");
+
+        navConfigMenu.getStyleClass().add("ghost-button");
+        rebuildNavigationConfigMenu();
+
+        ScrollPane scrollPane = new ScrollPane(navButtonsBox);
+        scrollPane.getStyleClass().add("sidebar-scroll");
+        scrollPane.setFitToWidth(true);
+        scrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        scrollPane.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
+        VBox.setVgrow(scrollPane, Priority.ALWAYS);
+
+        overflowMenu.getStyleClass().add("ghost-button");
+        overflowMenu.setManaged(false);
+        overflowMenu.setVisible(false);
+
+        logoBlock.getChildren().addAll(logoView, navHeader);
+        sidebar.getChildren().addAll(logoBlock, navConfigMenu, scrollPane, overflowMenu);
+        rebuildSidebarButtons();
     }
 
     private Button createNavButton(ScreenId screenId) {
@@ -182,7 +240,12 @@ public class MainView {
         button.setMaxWidth(Double.MAX_VALUE);
         button.setContentDisplay(ContentDisplay.GRAPHIC_ONLY);
         button.setGraphic(createNavButtonGraphic(screenId));
-        button.setOnAction(event -> navigationManager.navigate(screenId));
+        button.setOnAction(event -> {
+            if (navigationManager.currentScreen() == screenId) {
+                return;
+            }
+            navigationManager.navigate(screenId);
+        });
         return button;
     }
 
@@ -222,7 +285,14 @@ public class MainView {
                         appContext.memberService()
                 )
         );
-        navigationManager.register(ScreenId.MEMBERS, () -> new MembersScreen(appContext.memberService(), appContext.customCategoryService()));
+        navigationManager.register(
+                ScreenId.MEMBERS,
+                () -> new MembersScreen(
+                        appContext.memberService(),
+                        appContext.customCategoryService(),
+                        this::openCategoryManager
+                )
+        );
         navigationManager.register(
                 ScreenId.EVENTS,
                 () -> new EventsScreen(
@@ -230,7 +300,8 @@ public class MainView {
                         appContext.eventTrackingService(),
                         appContext.memberService(),
                         appContext.customCategoryService(),
-                        appContext.checklistService()
+                        appContext.checklistService(),
+                        this::openCategoryManager
                 )
         );
         navigationManager.register(ScreenId.MEETINGS, () -> new MeetingsScreen(appContext.meetingService(), appContext.memberService(), appContext.checklistService()));
@@ -342,7 +413,204 @@ public class MainView {
         if (current == null) {
             current = ScreenId.DASHBOARD;
         }
-        navigationManager.clearCache();
+        navigationManager.clearCache(
+                ScreenId.DAILY_USE,
+                ScreenId.DASHBOARD,
+                ScreenId.SEARCH,
+                ScreenId.CALENDAR,
+                ScreenId.MEMBERS,
+                ScreenId.EVENTS,
+                ScreenId.MEETINGS,
+                ScreenId.TASKS,
+                ScreenId.DOCUMENTS,
+                ScreenId.CONTRIBUTIONS,
+                ScreenId.EXPORTS,
+                ScreenId.SETTINGS
+        );
         navigationManager.navigate(current);
+    }
+
+    private void openCategoryManager() {
+        navigationManager.navigate(ScreenId.SETTINGS);
+    }
+
+    private void loadNavigationPreferences() {
+        List<ScreenId> defaults = new ArrayList<>(DEFAULT_PRIMARY_SCREENS);
+        List<ScreenId> parsedOrder = parseScreenList(appContext.settingsService().getValue(NAV_ORDER_SETTING_KEY).orElse(""));
+        navOrder.clear();
+        navOrder.addAll(parsedOrder.isEmpty() ? defaults : parsedOrder);
+        for (ScreenId defaultScreen : defaults) {
+            if (!navOrder.contains(defaultScreen)) {
+                navOrder.add(defaultScreen);
+            }
+        }
+        navOrder.removeIf(screenId -> !DEFAULT_PRIMARY_SCREENS.contains(screenId));
+
+        hiddenScreens.clear();
+        hiddenScreens.addAll(parseScreenList(appContext.settingsService().getValue(NAV_HIDDEN_SETTING_KEY).orElse("")));
+        hiddenScreens.removeIf(screenId -> !navOrder.contains(screenId));
+
+        sidebarCollapsed = Boolean.parseBoolean(appContext.settingsService().getValue(NAV_COLLAPSED_SETTING_KEY).orElse("false"));
+        sidebarVisible = !appContext.settingsService().getValue(NAV_VISIBLE_SETTING_KEY).orElse("true").equalsIgnoreCase("false");
+    }
+
+    private List<ScreenId> parseScreenList(String rawValue) {
+        if (rawValue == null || rawValue.isBlank()) {
+            return List.of();
+        }
+        List<ScreenId> screens = new ArrayList<>();
+        for (String token : rawValue.split(",")) {
+            String trimmed = token.trim();
+            if (trimmed.isBlank()) {
+                continue;
+            }
+            try {
+                ScreenId id = ScreenId.valueOf(trimmed);
+                if (!screens.contains(id)) {
+                    screens.add(id);
+                }
+            } catch (IllegalArgumentException ignored) {
+                // Ignore unknown screen keys stored by older versions.
+            }
+        }
+        return screens;
+    }
+
+    private void rebuildNavigationConfigMenu() {
+        navConfigMenu.getItems().clear();
+
+        for (ScreenId screenId : navOrder) {
+            CheckMenuItem item = new CheckMenuItem(screenId.label());
+            item.setSelected(!hiddenScreens.contains(screenId));
+            item.setOnAction(event -> {
+                if (!item.isSelected() && visibleScreenCount() <= 1) {
+                    item.setSelected(true);
+                    return;
+                }
+                if (item.isSelected()) {
+                    hiddenScreens.remove(screenId);
+                } else {
+                    hiddenScreens.add(screenId);
+                }
+                rebuildSidebarButtons();
+                persistNavigationPreferences();
+            });
+            navConfigMenu.getItems().add(item);
+        }
+
+        navConfigMenu.getItems().add(new SeparatorMenuItem());
+
+        Menu moveMenu = new Menu("Reordonner");
+        for (ScreenId screenId : navOrder) {
+            Menu entry = new Menu(screenId.label());
+            int index = navOrder.indexOf(screenId);
+            MenuItem upItem = new MenuItem("Monter");
+            upItem.setDisable(index == 0);
+            upItem.setOnAction(event -> moveScreen(screenId, -1));
+            MenuItem downItem = new MenuItem("Descendre");
+            downItem.setDisable(index == navOrder.size() - 1);
+            downItem.setOnAction(event -> moveScreen(screenId, 1));
+            entry.getItems().addAll(upItem, downItem);
+            moveMenu.getItems().add(entry);
+        }
+        navConfigMenu.getItems().add(moveMenu);
+
+        MenuItem resetItem = new MenuItem("Reinitialiser");
+        resetItem.setOnAction(event -> {
+            navOrder.clear();
+            navOrder.addAll(DEFAULT_PRIMARY_SCREENS);
+            hiddenScreens.clear();
+            rebuildSidebarButtons();
+            rebuildNavigationConfigMenu();
+            persistNavigationPreferences();
+        });
+        navConfigMenu.getItems().add(resetItem);
+    }
+
+    private void rebuildSidebarButtons() {
+        navButtons.clear();
+        navButtonsBox.getChildren().clear();
+
+        List<ScreenId> visibleOrder = navOrder.stream()
+                .filter(screenId -> !hiddenScreens.contains(screenId))
+                .collect(Collectors.toList());
+
+        int directCount = Math.min(MAX_DIRECT_NAV_BUTTONS, visibleOrder.size());
+        for (int i = 0; i < directCount; i++) {
+            ScreenId screenId = visibleOrder.get(i);
+            Button button = createNavButton(screenId);
+            navButtons.put(screenId, button);
+            navButtonsBox.getChildren().add(button);
+        }
+
+        overflowMenu.getItems().clear();
+        for (int i = directCount; i < visibleOrder.size(); i++) {
+            ScreenId overflowScreen = visibleOrder.get(i);
+            MenuItem item = new MenuItem(overflowScreen.label());
+            item.setOnAction(event -> navigationManager.navigate(overflowScreen));
+            overflowMenu.getItems().add(item);
+        }
+
+        boolean hasOverflow = !overflowMenu.getItems().isEmpty();
+        overflowMenu.setManaged(hasOverflow);
+        overflowMenu.setVisible(hasOverflow);
+        overflowMenu.setText(hasOverflow ? "Autres modules (" + overflowMenu.getItems().size() + ")" : "Autres modules");
+
+        ScreenId current = navigationManager.currentScreen();
+        if (current != null && navButtons.containsKey(current)) {
+            navButtons.get(current).getStyleClass().add("nav-button-active");
+        }
+    }
+
+    private int visibleScreenCount() {
+        return (int) navOrder.stream().filter(screenId -> !hiddenScreens.contains(screenId)).count();
+    }
+
+    private void moveScreen(ScreenId screenId, int delta) {
+        int index = navOrder.indexOf(screenId);
+        int target = index + delta;
+        if (index < 0 || target < 0 || target >= navOrder.size()) {
+            return;
+        }
+        Collections.swap(navOrder, index, target);
+        rebuildSidebarButtons();
+        rebuildNavigationConfigMenu();
+        persistNavigationPreferences();
+    }
+
+    private void applySidebarCollapsedState() {
+        root.getStyleClass().remove("sidebar-collapsed");
+        if (sidebarCollapsed) {
+            root.getStyleClass().add("sidebar-collapsed");
+            navConfigMenu.setText("Menu");
+        } else {
+            navConfigMenu.setText("Personnaliser le menu");
+        }
+    }
+
+    private void applySidebarVisibilityState() {
+        sidebar.setVisible(sidebarVisible);
+        sidebar.setManaged(sidebarVisible);
+        updateSidebarToggleLabel();
+    }
+
+    private void updateSidebarToggleLabel() {
+        if (sidebarToggleButton == null) {
+            return;
+        }
+        sidebarToggleButton.setText(sidebarVisible ? "Masquer menu" : "Afficher menu");
+    }
+
+    private void persistNavigationPreferences() {
+        String order = navOrder.stream().map(ScreenId::name).collect(Collectors.joining(","));
+        String hidden = hiddenScreens.stream().map(ScreenId::name).collect(Collectors.joining(","));
+        try {
+            appContext.settingsService().saveSetting(NAV_ORDER_SETTING_KEY, order);
+            appContext.settingsService().saveSetting(NAV_HIDDEN_SETTING_KEY, hidden);
+            appContext.settingsService().saveSetting(NAV_COLLAPSED_SETTING_KEY, Boolean.toString(sidebarCollapsed));
+            appContext.settingsService().saveSetting(NAV_VISIBLE_SETTING_KEY, Boolean.toString(sidebarVisible));
+        } catch (Exception ignored) {
+            // Keep navigation usable even if settings persistence is temporarily unavailable.
+        }
     }
 }

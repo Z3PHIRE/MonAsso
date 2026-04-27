@@ -84,7 +84,7 @@ public class SettingsScreen extends VBox {
         Label title = new Label("Parametres");
         title.getStyleClass().add("screen-title");
 
-        Label subtitle = new Label("Chemins applicatifs, sauvegarde et restauration de la base SQLite.");
+        Label subtitle = new Label("Chemins applicatifs, sauvegarde et categories personnalisables (categories/sous-categories).");
         subtitle.getStyleClass().add("screen-subtitle");
         subtitle.setWrapText(true);
 
@@ -98,7 +98,7 @@ public class SettingsScreen extends VBox {
         TitledPane actionsPane = new TitledPane("Actions", createActionsPanel());
         actionsPane.getStyleClass().add("folded-panel");
         accordion.getPanes().addAll(pathsPane, dataSafetyPane, customCategoriesPane, actionsPane);
-        accordion.setExpandedPane(pathsPane);
+        accordion.setExpandedPane(customCategoriesPane);
 
         getChildren().addAll(
                 title,
@@ -196,6 +196,8 @@ public class SettingsScreen extends VBox {
         section.getStyleClass().add("section-label");
         Label helper = new Label("Types supportes: case a cocher, texte court, nombre, date, liste.");
         helper.getStyleClass().add("muted-text");
+        Label usageHint = new Label("Astuce: creez d'abord une categorie racine, puis ajoutez des sous-categories avec le champ Parent.");
+        usageHint.getStyleClass().add("muted-text");
 
         VBox.setVgrow(customCategoriesTable, Priority.ALWAYS);
 
@@ -264,7 +266,7 @@ public class SettingsScreen extends VBox {
         HBox actions = new HBox(10, createButton, updateButton, resetButton, reloadButton);
         actions.getStyleClass().add("action-row");
 
-        panel.getChildren().addAll(section, helper, customCategoriesTable, grid, scopesRow, actions);
+        panel.getChildren().addAll(section, helper, usageHint, customCategoriesTable, grid, scopesRow, actions);
         return panel;
     }
 

@@ -74,6 +74,36 @@
     -fx-pref-width: 232;
 }
 
+.sidebar-scroll {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+}
+
+.sidebar-scroll > .viewport {
+    -fx-background-color: transparent;
+}
+
+.sidebar .button,
+.sidebar .menu-button {
+    -fx-max-width: Infinity;
+}
+
+.app-root.sidebar-collapsed .sidebar {
+    -fx-pref-width: 94;
+}
+
+.app-root.sidebar-collapsed .sidebar-section-title,
+.app-root.sidebar-collapsed .nav-label {
+    -fx-opacity: 0;
+    -fx-pref-width: 0;
+    -fx-max-width: 0;
+}
+
+.app-root.sidebar-collapsed .nav-button {
+    -fx-alignment: center;
+    -fx-padding: 8 6 8 6;
+}
+
 .sidebar-logo {
     -fx-background-color: rgba(255, 255, 255, 0.18);
     -fx-background-radius: 12;

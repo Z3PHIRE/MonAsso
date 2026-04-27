@@ -7,6 +7,7 @@ import javafx.scene.Node;
 import javafx.scene.layout.StackPane;
 
 import java.util.EnumMap;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
 
@@ -26,6 +27,12 @@ public class NavigationManager {
     }
 
     public void navigate(ScreenId screenId) {
+        if (screenId == null) {
+            return;
+        }
+        if (screenId == currentScreen.get() && !contentPane.getChildren().isEmpty()) {
+            return;
+        }
         Supplier<Node> supplier = factories.get(screenId);
         if (supplier == null) {
             throw new IllegalArgumentException("Ecran non enregistre: " + screenId);
@@ -41,6 +48,20 @@ public class NavigationManager {
 
     public void clearCache() {
         cache.clear();
+    }
+
+    public void clearCache(ScreenId... screens) {
+        if (screens == null || screens.length == 0) {
+            clearCache();
+            return;
+        }
+        List<ScreenId> toClear = java.util.Arrays.stream(screens).filter(java.util.Objects::nonNull).toList();
+        if (toClear.isEmpty()) {
+            return;
+        }
+        for (ScreenId screenId : toClear) {
+            cache.remove(screenId);
+        }
     }
 
     public ScreenId currentScreen() {

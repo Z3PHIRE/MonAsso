@@ -88,6 +88,7 @@ public class EventsScreen extends VBox {
     private final MemberService memberService;
     private final CustomCategoryService customCategoryService;
     private final ChecklistService checklistService;
+    private final Runnable openCategoryManagerAction;
 
     private final ObservableList<Event> events = FXCollections.observableArrayList();
     private final ObservableList<Member> activeMembers = FXCollections.observableArrayList();
@@ -182,13 +183,15 @@ public class EventsScreen extends VBox {
             EventTrackingService eventTrackingService,
             MemberService memberService,
             CustomCategoryService customCategoryService,
-            ChecklistService checklistService
+            ChecklistService checklistService,
+            Runnable openCategoryManagerAction
     ) {
         this.eventService = eventService;
         this.eventTrackingService = eventTrackingService;
         this.memberService = memberService;
         this.customCategoryService = customCategoryService;
         this.checklistService = checklistService;
+        this.openCategoryManagerAction = openCategoryManagerAction == null ? () -> { } : openCategoryManagerAction;
 
         getStyleClass().add("content-root");
         setPadding(new Insets(20));
@@ -690,13 +693,19 @@ public class EventsScreen extends VBox {
 
         Label helper = new Label("Categories personnalisables actives pour les evenements.");
         helper.getStyleClass().add("muted-text");
+        Label pathHint = new Label("Configuration: Parametres > Categories personnalisables.");
+        pathHint.getStyleClass().add("muted-text");
+
+        Button manageButton = new Button("Gerer categories");
+        manageButton.getStyleClass().add("ghost-button");
+        manageButton.setOnAction(event -> openCategoryManagerAction.run());
 
         Button saveButton = new Button("Enregistrer categories");
         saveButton.getStyleClass().add("primary-button");
         saveButton.setOnAction(event -> saveCategoryValues());
 
         VBox.setVgrow(categoriesEditorBox, Priority.ALWAYS);
-        panel.getChildren().addAll(helper, categoriesEditorBox, saveButton);
+        panel.getChildren().addAll(helper, pathHint, manageButton, categoriesEditorBox, saveButton);
         return panel;
     }
 
