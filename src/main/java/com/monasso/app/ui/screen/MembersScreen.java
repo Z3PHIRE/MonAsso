@@ -12,11 +12,14 @@ import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.DatePicker;
 import javafx.scene.control.Label;
+import javafx.scene.control.MenuButton;
+import javafx.scene.control.MenuItem;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableRow;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
+import javafx.scene.control.TitledPane;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
@@ -63,14 +66,17 @@ public class MembersScreen extends VBox {
 
         VBox.setVgrow(tableView, Priority.ALWAYS);
         tableSummary.getStyleClass().add("muted-text");
+        TitledPane formPane = new TitledPane("Fiche personne", createFormPanel());
+        formPane.getStyleClass().add("folded-panel");
+        formPane.setExpanded(false);
 
         getChildren().addAll(
                 title,
                 subtitle,
                 createFilterPanel(),
-                createFormPanel(),
                 tableSummary,
-                tableView
+                tableView,
+                formPane
         );
         refreshMembers();
     }
@@ -93,18 +99,20 @@ public class MembersScreen extends VBox {
         applyButton.getStyleClass().add("primary-button");
         applyButton.setOnAction(event -> refreshMembers());
 
-        Button clearButton = new Button("Reinitialiser");
-        clearButton.getStyleClass().add("ghost-button");
-        clearButton.setOnAction(event -> {
+        MenuButton moreButton = new MenuButton("Plus d'options");
+        moreButton.getStyleClass().add("ghost-button");
+        MenuItem clearItem = new MenuItem("Reinitialiser filtres");
+        clearItem.setOnAction(event -> {
             searchField.clear();
             statusFilterCombo.getSelectionModel().select(MemberStatusFilter.ALL);
             refreshMembers();
         });
+        moreButton.getItems().add(clearItem);
 
         HBox row = new HBox(10,
                 new Label("Recherche"), searchField,
                 new Label("Statut"), statusFilterCombo,
-                applyButton, clearButton
+                applyButton, moreButton
         );
         row.getStyleClass().add("action-row");
         HBox.setHgrow(searchField, Priority.ALWAYS);
@@ -117,7 +125,7 @@ public class MembersScreen extends VBox {
         VBox panel = new VBox(12);
         panel.getStyleClass().add("panel-card");
 
-        Label formTitle = new Label("Fiche membre");
+        Label formTitle = new Label("Edition");
         formTitle.getStyleClass().add("section-label");
 
         firstNameField.setPromptText("Prenom");
@@ -155,15 +163,15 @@ public class MembersScreen extends VBox {
         updateButton.getStyleClass().add("primary-button");
         updateButton.setOnAction(event -> updateMember());
 
-        Button clearButton = new Button("Nouveau");
-        clearButton.getStyleClass().add("ghost-button");
-        clearButton.setOnAction(event -> clearForm());
+        MenuButton moreButton = new MenuButton("Plus d'options");
+        moreButton.getStyleClass().add("ghost-button");
+        MenuItem clearItem = new MenuItem("Nouveau formulaire");
+        clearItem.setOnAction(event -> clearForm());
+        MenuItem deleteItem = new MenuItem("Supprimer la selection");
+        deleteItem.setOnAction(event -> deleteSelectedMember());
+        moreButton.getItems().addAll(clearItem, deleteItem);
 
-        Button deleteButton = new Button("Supprimer selection");
-        deleteButton.getStyleClass().add("danger-button");
-        deleteButton.setOnAction(event -> deleteSelectedMember());
-
-        HBox actions = new HBox(10, createButton, updateButton, clearButton, deleteButton);
+        HBox actions = new HBox(10, createButton, updateButton, moreButton);
         actions.getStyleClass().add("action-row");
 
         panel.getChildren().addAll(formTitle, grid, actions);

@@ -7,6 +7,8 @@ import com.monasso.app.util.DesktopUtils;
 import javafx.geometry.Insets;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.control.Tab;
+import javafx.scene.control.TabPane;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
@@ -42,12 +44,25 @@ public class ExportsScreen extends VBox {
                 title,
                 subtitle,
                 createLocationPanel(),
-                createCsvPanel(),
-                createXlsxPanel(),
-                createPdfPanel(),
+                createExportsTabs(),
                 createOutputPanel()
         );
         refreshLocationField();
+    }
+
+    private TabPane createExportsTabs() {
+        TabPane tabPane = new TabPane();
+        tabPane.getStyleClass().add("light-tabs");
+
+        Tab csvTab = new Tab("CSV", createCsvPanel());
+        csvTab.setClosable(false);
+        Tab xlsxTab = new Tab("Excel", createXlsxPanel());
+        xlsxTab.setClosable(false);
+        Tab pdfTab = new Tab("PDF", createPdfPanel());
+        pdfTab.setClosable(false);
+
+        tabPane.getTabs().addAll(csvTab, xlsxTab, pdfTab);
+        return tabPane;
     }
 
     private VBox createLocationPanel() {

@@ -11,11 +11,14 @@ import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
+import javafx.scene.control.MenuButton;
+import javafx.scene.control.MenuItem;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableRow;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
+import javafx.scene.control.TitledPane;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
@@ -73,15 +76,21 @@ public class EventsScreen extends VBox {
         VBox.setVgrow(eventsTable, Priority.ALWAYS);
         VBox.setVgrow(participantsTable, Priority.ALWAYS);
         tableSummary.getStyleClass().add("muted-text");
+        TitledPane formPane = new TitledPane("Fiche evenement", createEventFormPanel());
+        formPane.getStyleClass().add("folded-panel");
+        formPane.setExpanded(false);
+        TitledPane detailPane = new TitledPane("Detail et participants", createEventDetailPanel());
+        detailPane.getStyleClass().add("folded-panel");
+        detailPane.setExpanded(true);
 
         getChildren().addAll(
                 title,
                 subtitle,
                 createFilterPanel(),
-                createEventFormPanel(),
                 tableSummary,
                 eventsTable,
-                createEventDetailPanel()
+                formPane,
+                detailPane
         );
 
         refreshEvents();
@@ -102,15 +111,17 @@ public class EventsScreen extends VBox {
         applyButton.getStyleClass().add("primary-button");
         applyButton.setOnAction(event -> refreshEvents());
 
-        Button resetButton = new Button("Reinitialiser");
-        resetButton.getStyleClass().add("ghost-button");
-        resetButton.setOnAction(event -> {
+        MenuButton moreButton = new MenuButton("Plus d'options");
+        moreButton.getStyleClass().add("ghost-button");
+        MenuItem resetItem = new MenuItem("Reinitialiser filtres");
+        resetItem.setOnAction(event -> {
             searchField.clear();
             upcomingOnlyCheck.setSelected(false);
             refreshEvents();
         });
+        moreButton.getItems().add(resetItem);
 
-        HBox row = new HBox(10, new Label("Recherche"), searchField, upcomingOnlyCheck, applyButton, resetButton);
+        HBox row = new HBox(10, new Label("Recherche"), searchField, upcomingOnlyCheck, applyButton, moreButton);
         row.getStyleClass().add("action-row");
         HBox.setHgrow(searchField, Priority.ALWAYS);
 
@@ -122,7 +133,7 @@ public class EventsScreen extends VBox {
         VBox panel = new VBox(12);
         panel.getStyleClass().add("panel-card");
 
-        Label section = new Label("Fiche evenement");
+        Label section = new Label("Edition");
         section.getStyleClass().add("section-label");
 
         titleField.setPromptText("Titre");
@@ -156,19 +167,17 @@ public class EventsScreen extends VBox {
         updateButton.getStyleClass().add("primary-button");
         updateButton.setOnAction(event -> updateEvent());
 
-        Button clearButton = new Button("Nouveau");
-        clearButton.getStyleClass().add("ghost-button");
-        clearButton.setOnAction(event -> clearForm());
+        MenuButton moreButton = new MenuButton("Plus d'options");
+        moreButton.getStyleClass().add("ghost-button");
+        MenuItem clearItem = new MenuItem("Nouveau formulaire");
+        clearItem.setOnAction(event -> clearForm());
+        MenuItem viewItem = new MenuItem("Voir detail");
+        viewItem.setOnAction(event -> openSelectedEventDetail());
+        MenuItem deleteItem = new MenuItem("Supprimer la selection");
+        deleteItem.setOnAction(event -> deleteSelectedEvent());
+        moreButton.getItems().addAll(clearItem, viewItem, deleteItem);
 
-        Button viewButton = new Button("Voir detail");
-        viewButton.getStyleClass().add("primary-button");
-        viewButton.setOnAction(event -> openSelectedEventDetail());
-
-        Button deleteButton = new Button("Supprimer selection");
-        deleteButton.getStyleClass().add("danger-button");
-        deleteButton.setOnAction(event -> deleteSelectedEvent());
-
-        HBox actions = new HBox(10, createButton, updateButton, clearButton, viewButton, deleteButton);
+        HBox actions = new HBox(10, createButton, updateButton, moreButton);
         actions.getStyleClass().add("action-row");
 
         panel.getChildren().addAll(section, grid, actions);

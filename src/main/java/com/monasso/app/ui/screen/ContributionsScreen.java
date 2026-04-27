@@ -13,11 +13,14 @@ import javafx.geometry.Insets;
 import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
+import javafx.scene.control.MenuButton;
+import javafx.scene.control.MenuItem;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableRow;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
+import javafx.scene.control.TitledPane;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
@@ -70,15 +73,21 @@ public class ContributionsScreen extends VBox {
         VBox.setVgrow(contributionsTable, Priority.ALWAYS);
         VBox.setVgrow(historyTable, Priority.ALWAYS);
         tableSummary.getStyleClass().add("muted-text");
+        TitledPane formPane = new TitledPane("Saisie cotisation", createFormPanel());
+        formPane.getStyleClass().add("folded-panel");
+        formPane.setExpanded(false);
+        TitledPane historyPane = new TitledPane("Historique du membre", createHistoryPanel());
+        historyPane.getStyleClass().add("folded-panel");
+        historyPane.setExpanded(false);
 
         getChildren().addAll(
                 title,
                 subtitle,
                 createFilterPanel(),
-                createFormPanel(),
                 tableSummary,
                 contributionsTable,
-                createHistoryPanel()
+                formPane,
+                historyPane
         );
 
         loadMembers();
@@ -102,21 +111,23 @@ public class ContributionsScreen extends VBox {
         applyButton.getStyleClass().add("primary-button");
         applyButton.setOnAction(event -> refreshContributions());
 
-        Button resetButton = new Button("Reinitialiser");
-        resetButton.getStyleClass().add("ghost-button");
-        resetButton.setOnAction(event -> {
+        MenuButton moreButton = new MenuButton("Plus d'options");
+        moreButton.getStyleClass().add("ghost-button");
+        MenuItem resetItem = new MenuItem("Reinitialiser filtres");
+        resetItem.setOnAction(event -> {
             searchField.clear();
             periodFilterField.setText(contributionService.currentPeriod());
             statusFilterCombo.getSelectionModel().clearSelection();
             refreshContributions();
         });
+        moreButton.getItems().add(resetItem);
 
         HBox row = new HBox(
                 10,
                 new Label("Recherche"), searchField,
                 new Label("Periode"), periodFilterField,
                 new Label("Statut"), statusFilterCombo,
-                applyButton, resetButton
+                applyButton, moreButton
         );
         row.getStyleClass().add("action-row");
         HBox.setHgrow(searchField, Priority.ALWAYS);
@@ -129,7 +140,7 @@ public class ContributionsScreen extends VBox {
         VBox panel = new VBox(12);
         panel.getStyleClass().add("panel-card");
 
-        Label section = new Label("Enregistrer une cotisation");
+        Label section = new Label("Edition");
         section.getStyleClass().add("section-label");
 
         memberCombo.setItems(members);
@@ -176,15 +187,15 @@ public class ContributionsScreen extends VBox {
         createButton.getStyleClass().add("accent-button");
         createButton.setOnAction(event -> createContribution());
 
-        Button deleteButton = new Button("Supprimer selection");
-        deleteButton.getStyleClass().add("danger-button");
-        deleteButton.setOnAction(event -> deleteSelectedContribution());
+        MenuButton moreButton = new MenuButton("Plus d'options");
+        moreButton.getStyleClass().add("ghost-button");
+        MenuItem deleteItem = new MenuItem("Supprimer la selection");
+        deleteItem.setOnAction(event -> deleteSelectedContribution());
+        MenuItem refreshItem = new MenuItem("Recharger la liste");
+        refreshItem.setOnAction(event -> refreshContributions());
+        moreButton.getItems().addAll(deleteItem, refreshItem);
 
-        Button refreshButton = new Button("Recharger");
-        refreshButton.getStyleClass().add("ghost-button");
-        refreshButton.setOnAction(event -> refreshContributions());
-
-        HBox actions = new HBox(10, createButton, deleteButton, refreshButton);
+        HBox actions = new HBox(10, createButton, moreButton);
         actions.getStyleClass().add("action-row");
 
         panel.getChildren().addAll(section, grid, actions);

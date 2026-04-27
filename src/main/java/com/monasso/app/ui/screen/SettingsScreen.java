@@ -6,10 +6,14 @@ import com.monasso.app.service.SettingsService;
 import com.monasso.app.util.AlertUtils;
 import com.monasso.app.util.DesktopUtils;
 import javafx.geometry.Insets;
+import javafx.scene.control.Accordion;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.control.MenuButton;
+import javafx.scene.control.MenuItem;
 import javafx.scene.control.TextField;
 import javafx.scene.control.TextInputDialog;
+import javafx.scene.control.TitledPane;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
@@ -55,12 +59,20 @@ public class SettingsScreen extends VBox {
         subtitle.getStyleClass().add("screen-subtitle");
         subtitle.setWrapText(true);
 
+        Accordion accordion = new Accordion();
+        TitledPane pathsPane = new TitledPane("Chemins", createPathsPanel());
+        pathsPane.getStyleClass().add("folded-panel");
+        TitledPane dataSafetyPane = new TitledPane("Securite des donnees", createDataSafetyPanel());
+        dataSafetyPane.getStyleClass().add("folded-panel");
+        TitledPane actionsPane = new TitledPane("Actions", createActionsPanel());
+        actionsPane.getStyleClass().add("folded-panel");
+        accordion.getPanes().addAll(pathsPane, dataSafetyPane, actionsPane);
+        accordion.setExpandedPane(pathsPane);
+
         getChildren().addAll(
                 title,
                 subtitle,
-                createPathsPanel(),
-                createDataSafetyPanel(),
-                createActionsPanel()
+                accordion
         );
         reloadFromSettings();
     }
@@ -95,9 +107,6 @@ public class SettingsScreen extends VBox {
         VBox panel = new VBox(10);
         panel.getStyleClass().add("panel-card");
 
-        Label panelTitle = new Label("Securite des donnees");
-        panelTitle.getStyleClass().add("section-label");
-
         selectedBackupField.setEditable(false);
         selectedBackupField.setPromptText("Selectionnez un fichier de sauvegarde .db");
 
@@ -113,33 +122,24 @@ public class SettingsScreen extends VBox {
         restoreButton.getStyleClass().add("danger-button");
         restoreButton.setOnAction(event -> restoreSelectedBackup());
 
-        Button openBackupFolder = new Button("Ouvrir dossier backups");
-        openBackupFolder.getStyleClass().add("primary-button");
-        openBackupFolder.setOnAction(event -> openBackupDirectory());
+        MenuButton moreButton = new MenuButton("Plus d'options");
+        moreButton.getStyleClass().add("ghost-button");
+        MenuItem openFolderItem = new MenuItem("Ouvrir dossier backups");
+        openFolderItem.setOnAction(event -> openBackupDirectory());
+        MenuItem demoDataItem = new MenuItem("Charger donnees de demonstration");
+        demoDataItem.setOnAction(event -> loadDemoData());
+        moreButton.getItems().addAll(openFolderItem, demoDataItem);
 
-        Button loadDemoButton = new Button("Charger donnees de demonstration");
-        loadDemoButton.getStyleClass().add("ghost-button");
-        loadDemoButton.setOnAction(event -> loadDemoData());
+        HBox row = new HBox(10, createBackupButton, chooseBackupButton, restoreButton, moreButton);
+        row.getStyleClass().add("action-row");
 
-        HBox row1 = new HBox(10, createBackupButton, openBackupFolder);
-        row1.getStyleClass().add("action-row");
-
-        HBox row2 = new HBox(10, chooseBackupButton, restoreButton);
-        row2.getStyleClass().add("action-row");
-
-        HBox row3 = new HBox(10, loadDemoButton);
-        row3.getStyleClass().add("action-row");
-
-        panel.getChildren().addAll(panelTitle, selectedBackupField, row1, row2, row3);
+        panel.getChildren().addAll(selectedBackupField, row);
         return panel;
     }
 
     private VBox createActionsPanel() {
         VBox panel = new VBox(10);
         panel.getStyleClass().add("panel-card");
-
-        Label panelTitle = new Label("Actions");
-        panelTitle.getStyleClass().add("section-label");
 
         Button saveButton = new Button("Enregistrer les chemins");
         saveButton.getStyleClass().add("accent-button");
@@ -152,7 +152,7 @@ public class SettingsScreen extends VBox {
         HBox row = new HBox(10, saveButton, reloadButton);
         row.getStyleClass().add("action-row");
 
-        panel.getChildren().addAll(panelTitle, row);
+        panel.getChildren().add(row);
         return panel;
     }
 

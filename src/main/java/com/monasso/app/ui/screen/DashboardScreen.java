@@ -7,34 +7,43 @@ import com.monasso.app.ui.component.StatCard;
 import javafx.geometry.Insets;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
-import javafx.scene.control.ProgressBar;
+import javafx.scene.control.Separator;
 import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.HBox;
-import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 
 import java.time.format.DateTimeFormatter;
 import java.util.Locale;
+import java.util.function.Consumer;
 
 public class DashboardScreen extends VBox {
 
     private static final DateTimeFormatter EVENT_DATE_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
     private static final DateTimeFormatter EVENT_TIME_FORMAT = DateTimeFormatter.ofPattern("HH:mm");
 
+    public enum QuickAction {
+        ADD_PERSON,
+        CREATE_EVENT,
+        CREATE_MEETING,
+        RECORD_CONTRIBUTION,
+        EXPORT_DATA
+    }
+
     private final DashboardService dashboardService;
-    private final StatCard membersCard = new StatCard("Membres", "MB", "0", "Membres actifs : 0");
-    private final StatCard eventsCard = new StatCard("Evenements", "EV", "0", "Planning general");
-    private final StatCard paidContributionsCard = new StatCard("Cotisations payees", "OK", "0", "Paye");
-    private final StatCard pendingContributionsCard = new StatCard("Cotisations en attente", "AT", "0", "Relances");
-    private final StatCard upcomingEventsCard = new StatCard("Prochains evenements", "NX", "0", "A venir");
+    private final Consumer<QuickAction> quickActionHandler;
+
+    private final StatCard membersCard = new StatCard("Personnes actives", "PS", "0", "Actifs sur total");
+    private final StatCard upcomingEventsCard = new StatCard("Evenements a venir", "EV", "0", "Dans le calendrier");
+    private final StatCard paidContributionsCard = new StatCard("Cotisations payees", "OK", "0", "Membres a jour");
+    private final StatCard pendingContributionsCard = new StatCard("Cotisations en attente", "AT", "0", "Relances utiles");
+    private final StatCard collectedCard = new StatCard("Total collecte", "EU", "0 EUR", "Periode courante");
 
     private final VBox upcomingEventsList = new VBox(8);
-    private final Label totalCollectedLabel = new Label();
-    private final Label progressLabel = new Label();
-    private final ProgressBar contributionProgressBar = new ProgressBar(0);
+    private final Label coverageLabel = new Label();
 
-    public DashboardScreen(DashboardService dashboardService) {
+    public DashboardScreen(DashboardService dashboardService, Consumer<QuickAction> quickActionHandler) {
         this.dashboardService = dashboardService;
+        this.quickActionHandler = quickActionHandler;
 
         getStyleClass().add("content-root");
         setPadding(new Insets(20));
@@ -47,12 +56,7 @@ public class DashboardScreen extends VBox {
         subtitle.getStyleClass().add("screen-subtitle");
         subtitle.setWrapText(true);
 
-        Button refreshButton = new Button("Actualiser");
-        refreshButton.getStyleClass().add("primary-button");
-        refreshButton.setOnAction(event -> refreshMetrics());
-
-        HBox actions = new HBox(10, refreshButton);
-        actions.getStyleClass().add("action-row");
+        HBox quickActions = createQuickActions();
 
         FlowPane cards = new FlowPane();
         cards.getStyleClass().add("dashboard-cards");
@@ -60,21 +64,11 @@ public class DashboardScreen extends VBox {
         cards.setVgap(12);
         cards.getChildren().addAll(
                 membersCard,
-                eventsCard,
+                upcomingEventsCard,
                 paidContributionsCard,
                 pendingContributionsCard,
-                upcomingEventsCard
+                collectedCard
         );
-
-        VBox contributionPanel = new VBox(10);
-        contributionPanel.getStyleClass().add("panel-card");
-        Label contributionTitle = new Label("Collecte sur la periode courante");
-        contributionTitle.getStyleClass().add("section-label");
-        totalCollectedLabel.getStyleClass().add("screen-subtitle");
-        progressLabel.getStyleClass().add("muted-text");
-        contributionProgressBar.getStyleClass().add("progress-meter");
-        contributionProgressBar.setPrefWidth(420);
-        contributionPanel.getChildren().addAll(contributionTitle, totalCollectedLabel, contributionProgressBar, progressLabel);
 
         VBox upcomingPanel = new VBox(10);
         upcomingPanel.getStyleClass().add("panel-card");
@@ -83,24 +77,38 @@ public class DashboardScreen extends VBox {
         Label upcomingHint = new Label("Les 5 prochaines dates planifiees.");
         upcomingHint.getStyleClass().add("muted-text");
         upcomingEventsList.getStyleClass().add("event-list");
-        upcomingPanel.getChildren().addAll(upcomingTitle, upcomingHint, upcomingEventsList);
+        coverageLabel.getStyleClass().add("screen-subtitle");
+        upcomingPanel.getChildren().addAll(upcomingTitle, upcomingHint, new Separator(), upcomingEventsList, coverageLabel);
 
-        HBox lowerPanels = new HBox(12, contributionPanel, upcomingPanel);
-        HBox.setHgrow(contributionPanel, Priority.ALWAYS);
-        HBox.setHgrow(upcomingPanel, Priority.ALWAYS);
-
-        getChildren().addAll(title, subtitle, actions, cards, lowerPanels);
+        getChildren().addAll(title, subtitle, quickActions, cards, upcomingPanel);
         refreshMetrics();
+    }
+
+    private HBox createQuickActions() {
+        HBox row = new HBox(10);
+        row.getStyleClass().addAll("panel-card", "action-row");
+        row.getChildren().addAll(
+                createQuickActionButton("Ajouter une personne", QuickAction.ADD_PERSON),
+                createQuickActionButton("Creer un evenement", QuickAction.CREATE_EVENT),
+                createQuickActionButton("Creer une reunion", QuickAction.CREATE_MEETING),
+                createQuickActionButton("Enregistrer une cotisation", QuickAction.RECORD_CONTRIBUTION),
+                createQuickActionButton("Exporter", QuickAction.EXPORT_DATA)
+        );
+        return row;
+    }
+
+    private Button createQuickActionButton(String label, QuickAction action) {
+        Button button = new Button(label);
+        button.getStyleClass().add("primary-button");
+        button.setOnAction(event -> quickActionHandler.accept(action));
+        return button;
     }
 
     private void refreshMetrics() {
         DashboardMetrics metrics = dashboardService.getMetrics();
 
-        membersCard.setValue(String.valueOf(metrics.totalMembers()));
-        membersCard.setHelperText("Membres actifs : " + metrics.activeMembers());
-
-        eventsCard.setValue(String.valueOf(metrics.totalEvents()));
-        eventsCard.setHelperText(metrics.upcomingEventsCount() + " evenements a venir");
+        membersCard.setValue(String.valueOf(metrics.activeMembers()));
+        membersCard.setHelperText(metrics.activeMembers() + " actifs / " + metrics.totalMembers() + " personnes");
 
         paidContributionsCard.setValue(String.valueOf(metrics.paidContributions()));
         paidContributionsCard.setHelperText("Periode " + metrics.currentPeriod());
@@ -111,13 +119,10 @@ public class DashboardScreen extends VBox {
         upcomingEventsCard.setValue(String.valueOf(metrics.upcomingEventsCount()));
         upcomingEventsCard.setHelperText("Calendrier des prochaines dates");
 
-        totalCollectedLabel.setText(String.format(Locale.FRANCE, "Montant collecte (%s) : %.2f EUR",
-                metrics.currentPeriod(),
-                metrics.totalContributionAmount()));
-
+        collectedCard.setValue(String.format(Locale.FRANCE, "%.2f EUR", metrics.totalContributionAmount()));
+        collectedCard.setHelperText("Periode " + metrics.currentPeriod());
         double ratio = metrics.activeMembers() == 0 ? 0 : (double) metrics.paidContributions() / metrics.activeMembers();
-        contributionProgressBar.setProgress(Math.min(Math.max(ratio, 0), 1));
-        progressLabel.setText(String.format(Locale.FRANCE,
+        coverageLabel.setText(String.format(Locale.FRANCE,
                 "Couverture cotisations: %.0f%% (%d/%d membres actifs)",
                 ratio * 100,
                 metrics.paidContributions(),

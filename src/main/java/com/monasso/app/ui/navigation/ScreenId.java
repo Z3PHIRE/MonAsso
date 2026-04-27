@@ -2,8 +2,9 @@ package com.monasso.app.ui.navigation;
 
 public enum ScreenId {
     DASHBOARD("Tableau de bord"),
-    MEMBERS("Membres"),
+    MEMBERS("Personnes"),
     EVENTS("Evenements"),
+    MEETINGS("Reunions"),
     CONTRIBUTIONS("Cotisations"),
     EXPORTS("Exports"),
     SETTINGS("Parametres"),

@@ -9,6 +9,7 @@ import com.monasso.app.ui.screen.ContributionsScreen;
 import com.monasso.app.ui.screen.DashboardScreen;
 import com.monasso.app.ui.screen.EventsScreen;
 import com.monasso.app.ui.screen.ExportsScreen;
+import com.monasso.app.ui.screen.MeetingsScreen;
 import com.monasso.app.ui.screen.MembersScreen;
 import com.monasso.app.ui.screen.PersonalizationScreen;
 import com.monasso.app.ui.screen.SettingsScreen;
@@ -18,6 +19,9 @@ import javafx.scene.Parent;
 import javafx.scene.control.Button;
 import javafx.scene.control.ContentDisplay;
 import javafx.scene.control.Label;
+import javafx.scene.control.MenuButton;
+import javafx.scene.control.MenuItem;
+import javafx.scene.control.ToggleButton;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
@@ -26,19 +30,30 @@ import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 
+import java.util.Arrays;
 import java.util.EnumMap;
+import java.util.List;
 import java.util.Map;
 
 public class MainView {
 
     private static final Map<ScreenId, String> SCREEN_PICTOGRAMS = Map.of(
             ScreenId.DASHBOARD, "DB",
-            ScreenId.MEMBERS, "MB",
+            ScreenId.MEMBERS, "PS",
             ScreenId.EVENTS, "EV",
+            ScreenId.MEETINGS, "RE",
             ScreenId.CONTRIBUTIONS, "CT",
             ScreenId.EXPORTS, "EX",
             ScreenId.SETTINGS, "PR",
             ScreenId.PERSONALIZATION, "TH"
+    );
+    private static final List<ScreenId> PRIMARY_SCREENS = Arrays.asList(
+            ScreenId.DASHBOARD,
+            ScreenId.MEMBERS,
+            ScreenId.EVENTS,
+            ScreenId.MEETINGS,
+            ScreenId.CONTRIBUTIONS,
+            ScreenId.EXPORTS
     );
 
     private final AppContext appContext;
@@ -86,13 +101,30 @@ public class MainView {
         topBar.getStyleClass().add("top-bar");
 
         appTitleLabel.getStyleClass().add("app-title");
+        Label contextLabel = new Label("Gestion locale d'association");
+        contextLabel.getStyleClass().add("top-context-label");
+
+        VBox titleBlock = new VBox(2, appTitleLabel, contextLabel);
+        titleBlock.setAlignment(Pos.CENTER_LEFT);
 
         Label offlineTag = new Label("Mode local hors ligne");
         offlineTag.getStyleClass().add("status-pill");
 
+        ToggleButton compactModeToggle = new ToggleButton("Mode compact");
+        compactModeToggle.getStyleClass().add("ghost-button");
+        compactModeToggle.setOnAction(event -> setCompactMode(compactModeToggle.isSelected()));
+
+        MenuButton moreOptions = new MenuButton("Plus d'options");
+        moreOptions.getStyleClass().add("ghost-button");
+        MenuItem settingsItem = new MenuItem("Parametres");
+        settingsItem.setOnAction(event -> navigationManager.navigate(ScreenId.SETTINGS));
+        MenuItem personalizationItem = new MenuItem("Personnalisation");
+        personalizationItem.setOnAction(event -> navigationManager.navigate(ScreenId.PERSONALIZATION));
+        moreOptions.getItems().addAll(settingsItem, personalizationItem);
+
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
-        topBar.getChildren().addAll(appTitleLabel, spacer, offlineTag);
+        topBar.getChildren().addAll(titleBlock, spacer, compactModeToggle, moreOptions, offlineTag);
         return topBar;
     }
 
@@ -114,7 +146,7 @@ public class MainView {
         logoBlock.getChildren().addAll(logoView, navLabel);
         sidebar.getChildren().add(logoBlock);
 
-        for (ScreenId screenId : ScreenId.values()) {
+        for (ScreenId screenId : PRIMARY_SCREENS) {
             Button button = createNavButton(screenId);
             navButtons.put(screenId, button);
             sidebar.getChildren().add(button);
@@ -147,9 +179,10 @@ public class MainView {
     }
 
     private void configureNavigation() {
-        navigationManager.register(ScreenId.DASHBOARD, () -> new DashboardScreen(appContext.dashboardService()));
+        navigationManager.register(ScreenId.DASHBOARD, () -> new DashboardScreen(appContext.dashboardService(), this::onDashboardAction));
         navigationManager.register(ScreenId.MEMBERS, () -> new MembersScreen(appContext.memberService()));
         navigationManager.register(ScreenId.EVENTS, () -> new EventsScreen(appContext.eventService()));
+        navigationManager.register(ScreenId.MEETINGS, () -> new MeetingsScreen(appContext.eventService()));
         navigationManager.register(ScreenId.CONTRIBUTIONS, () -> new ContributionsScreen(appContext.contributionService(), appContext.memberService()));
         navigationManager.register(ScreenId.EXPORTS, () -> new ExportsScreen(appContext.exportService(), appContext.settingsService()));
         navigationManager.register(
@@ -178,6 +211,23 @@ public class MainView {
     private void refreshBranding(BrandingService brandingService) {
         appTitleLabel.setText(brandingService.getCurrentBranding().appName());
         logoView.setImage(brandingService.loadLogoImage(170, 80));
+    }
+
+    private void setCompactMode(boolean compactMode) {
+        root.getStyleClass().remove("compact-mode");
+        if (compactMode) {
+            root.getStyleClass().add("compact-mode");
+        }
+    }
+
+    private void onDashboardAction(DashboardScreen.QuickAction action) {
+        switch (action) {
+            case ADD_PERSON -> navigationManager.navigate(ScreenId.MEMBERS);
+            case CREATE_EVENT -> navigationManager.navigate(ScreenId.EVENTS);
+            case CREATE_MEETING -> navigationManager.navigate(ScreenId.MEETINGS);
+            case RECORD_CONTRIBUTION -> navigationManager.navigate(ScreenId.CONTRIBUTIONS);
+            case EXPORT_DATA -> navigationManager.navigate(ScreenId.EXPORTS);
+        }
     }
 
     private void reloadDataViews() {
