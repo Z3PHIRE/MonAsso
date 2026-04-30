@@ -2,34 +2,40 @@
 
 Guide court pour installer MonAsso sur un poste Windows.
 
-## Option A: version portable (recommandee)
-Aucun installateur requis. Un dossier contient tout.
+## Objectif "1 fichier pour l'utilisateur final"
 
-### 1) Generer la version portable
-```powershell
-.\gradlew.bat prepareExecutableJar packageWindows --no-daemon --no-configuration-cache
-```
-
-### 2) Recuperer le dossier final
-- Le dossier portable est genere dans `build/windows-image/MonAsso`.
-- Copiez ce dossier sur le PC cible.
-- Lancez `MonAsso.exe`.
-
-### 3) Dossier release pret a partager
+### 1) Generer la release partageable
 ```powershell
 .\scripts\create-release.ps1
 ```
-Le script prepare:
-- `release/MonAsso-v1.0.0/MonAsso/MonAsso.exe`
-- `release/MonAsso-v1.0.0-portable.zip`
 
-## Option B: installateur Windows (.exe)
-Necessite `jpackage` (JDK 21) et les prerequis Windows pour l'emballage.
+### 2) Fichiers produits
+- `release/MonAsso-vX.Y.Z-portable.zip`
+- `release/MonAsso-vX.Y.Z-install.zip` (recommande pour Dropbox)
+- `release/MonAsso-Setup-vX.Y.Z.exe` si WiX est disponible
+
+### 3) Parcours utilisateur final (simple)
+- Telecharger `MonAsso-vX.Y.Z-install.zip`.
+- Dezipper.
+- Lancer `Installer-MonAsso.cmd`.
+- L'application est installee dans `%LOCALAPPDATA%\Programs\MonAsso`.
+- Les raccourcis menu demarrer et bureau sont crees automatiquement.
+
+## Option commande unique (lien Dropbox)
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\install-monasso.ps1 -PackageSource "https://www.dropbox.com/scl/fi/EXEMPLE/MonAsso-vX.Y.Z-portable.zip?dl=1"
+```
+Le script telecharge, installe et cree les raccourcis automatiquement.
+
+## Option EXE natif (si WiX disponible)
+`packageInstaller` reste supporte mais depend de WiX sur la machine de build:
 
 ```powershell
 .\gradlew.bat packageInstaller --no-daemon --no-configuration-cache
 ```
-Sortie: `build/windows-installer`.
+- Sortie: `build/windows-installer`
+- Copie en release: `release/MonAsso-Setup-vX.Y.Z.exe` (via `create-release.ps1`)
 
 ## Donnees utilisateur
 - Les donnees restent locales (SQLite).

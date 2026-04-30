@@ -1,0 +1,8 @@
+MonAsso - installation rapide
+
+Option 1 (fichier local):
+1) Dezippez ce dossier.
+2) Double-cliquez sur Installer-MonAsso.cmd
+
+Option 2 (une commande depuis un lien Dropbox):
+powershell -NoProfile -ExecutionPolicy Bypass -File .\Install-MonAsso.ps1 -PackageSource "https://www.dropbox.com/scl/fi/EXEMPLE/MonAsso-v1.0.0-portable.zip?dl=1"

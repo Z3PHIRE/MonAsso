@@ -38,7 +38,17 @@ Copy-Item .\data\monasso.db .\backups\monasso_backup_YYYYMMDD.db
 
 ## 3) Packaging Windows
 
-### App portable (recommande)
+### Release partageable (recommande)
+
+```powershell
+.\scripts\create-release.ps1
+```
+
+- Produit `release/MonAsso-vX.Y.Z-portable.zip`
+- Produit `release/MonAsso-vX.Y.Z-install.zip` (1 fichier a partager)
+- Produit `release/MonAsso-Setup-vX.Y.Z.exe` si WiX est disponible
+
+### App portable
 
 ```powershell
 .\gradlew.bat prepareExecutableJar packageWindows --no-daemon --no-configuration-cache
@@ -47,13 +57,19 @@ Copy-Item .\data\monasso.db .\backups\monasso_backup_YYYYMMDD.db
 - Sortie: `build/windows-image/MonAsso/`
 - Executable: `build/windows-image/MonAsso/MonAsso.exe`
 
-### Installateur `.exe` (si WiX installe)
+### Installateur `.exe` natif (si WiX installe)
 
 ```powershell
 .\gradlew.bat packageInstaller --no-daemon --no-configuration-cache
 ```
 
 - Sortie: `build/windows-installer/`
+
+### Installation par commande unique (Dropbox)
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\install-monasso.ps1 -PackageSource "https://www.dropbox.com/scl/fi/EXEMPLE/MonAsso-vX.Y.Z-portable.zip?dl=1"
+```
 
 ## 4) Structure de code
 
@@ -89,4 +105,3 @@ Copy-Item .\data\monasso.db .\backups\monasso_backup_YYYYMMDD.db
 ```powershell
 java -Dorg.slf4j.simpleLogger.logFile=monasso.log -jar .\build\executable\MonAsso.jar
 ```
-

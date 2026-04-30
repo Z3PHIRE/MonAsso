@@ -22,6 +22,24 @@ MonAsso est une application desktop pour gerer une association de facon simple, 
 .\gradlew.bat run --no-daemon --no-configuration-cache
 ```
 
+## Installation Windows simplifiee (Dropbox)
+
+Pour preparer une release partageable en "1 fichier a telecharger":
+
+```powershell
+.\scripts\create-release.ps1
+```
+
+Le script genere:
+- `release/MonAsso-vX.Y.Z-portable.zip` (portable)
+- `release/MonAsso-vX.Y.Z-install.zip` (bundle installation simple)
+- `release/MonAsso-Setup-vX.Y.Z.exe` si WiX est disponible
+
+Pour un utilisateur final:
+- telecharger `MonAsso-vX.Y.Z-install.zip`
+- dezipper
+- lancer `Installer-MonAsso.cmd`
+
 ## Documentation
 - prise en main: `TUTORIEL_UTILISATEUR.md`
 - deploiement Windows: `DEPLOIEMENT_WINDOWS.md`
