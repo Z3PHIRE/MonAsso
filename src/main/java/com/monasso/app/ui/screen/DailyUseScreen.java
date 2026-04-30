@@ -34,7 +34,9 @@ public class DailyUseScreen extends VBox {
         OPEN_EVENTS,
         OPEN_MEETINGS,
         OPEN_TASKS,
-        OPEN_DOCUMENTS
+        OPEN_DOCUMENTS,
+        OPEN_CONTRIBUTIONS,
+        OPEN_EXPORTS
     }
 
     private static final DateTimeFormatter TIME_FORMAT = DateTimeFormatter.ofPattern("HH:mm");
@@ -43,6 +45,8 @@ public class DailyUseScreen extends VBox {
     private final TaskService taskService;
     private final EventService eventService;
     private final Consumer<DailyAction> actionHandler;
+    private final Label priorityMessageLabel = new Label();
+    private final Button priorityActionButton = new Button();
 
     private final VBox todayEventsBox = new VBox(6);
     private final VBox todayMeetingsBox = new VBox(6);
@@ -78,6 +82,7 @@ public class DailyUseScreen extends VBox {
         refreshButton.setOnAction(event -> refreshData());
         HBox topActions = new HBox(10, refreshButton);
         topActions.getStyleClass().add("action-row");
+        VBox priorityPanel = createPriorityPanel();
 
         HBox row1 = new HBox(12, createTodayPanel(), createWeekPanel());
         row1.getStyleClass().add("action-row");
@@ -85,7 +90,7 @@ public class DailyUseScreen extends VBox {
         HBox row2 = new HBox(12, createAlertsPanel(), createQuickActionsPanel(), createNavigationPanel());
         row2.getStyleClass().add("action-row");
 
-        getChildren().addAll(title, subtitle, topActions, row1, row2);
+        getChildren().addAll(title, subtitle, topActions, priorityPanel, row1, row2);
         refreshData();
     }
 
@@ -176,16 +181,40 @@ public class DailyUseScreen extends VBox {
         links.setVgap(8);
 
         links.getChildren().addAll(
-                createNavButton("Tableau de bord", DailyAction.OPEN_DASHBOARD),
                 createNavButton("Calendrier", DailyAction.OPEN_CALENDAR),
                 createNavButton("Personnes", DailyAction.OPEN_MEMBERS),
                 createNavButton("Evenements", DailyAction.OPEN_EVENTS),
                 createNavButton("Reunions", DailyAction.OPEN_MEETINGS),
                 createNavButton("Taches", DailyAction.OPEN_TASKS),
-                createNavButton("Documents", DailyAction.OPEN_DOCUMENTS)
+                createNavButton("Documents", DailyAction.OPEN_DOCUMENTS),
+                createNavButton("Cotisations", DailyAction.OPEN_CONTRIBUTIONS),
+                createNavButton("Exports", DailyAction.OPEN_EXPORTS)
         );
 
         panel.getChildren().addAll(section, links);
+        return panel;
+    }
+
+    private VBox createPriorityPanel() {
+        VBox panel = new VBox(8);
+        panel.getStyleClass().add("panel-card");
+        panel.getStyleClass().add("daily-priority-panel");
+
+        Label section = new Label("Priorite immediate");
+        section.getStyleClass().add("section-label");
+
+        priorityMessageLabel.getStyleClass().add("screen-subtitle");
+        priorityMessageLabel.setWrapText(true);
+
+        priorityActionButton.getStyleClass().add("primary-button");
+        priorityActionButton.setOnAction(event -> {
+            Object payload = priorityActionButton.getUserData();
+            if (payload instanceof DailyAction action) {
+                actionHandler.accept(action);
+            }
+        });
+
+        panel.getChildren().addAll(section, priorityMessageLabel, priorityActionButton);
         return panel;
     }
 
@@ -206,6 +235,8 @@ public class DailyUseScreen extends VBox {
 
     private void refreshData() {
         DashboardMetrics metrics = loadMetrics();
+        List<TaskItem> overdueTasks = loadOverdueTasks();
+        List<Event> eventsToPrepare = loadEventsToPrepare();
         if (metrics != null) {
             renderToday(metrics);
             renderWeek(metrics);
@@ -215,7 +246,8 @@ public class DailyUseScreen extends VBox {
             renderTaskLines(todayUrgentTasksBox, List.of(), "Chargement des taches indisponible.");
             renderScheduleLines(weekBox, List.of(), "Chargement des elements de la semaine indisponible.");
         }
-        renderAlerts();
+        renderAlerts(overdueTasks, eventsToPrepare);
+        renderPriorityAction(metrics, overdueTasks, eventsToPrepare);
     }
 
     private void renderToday(DashboardMetrics metrics) {
@@ -245,10 +277,7 @@ public class DailyUseScreen extends VBox {
         renderScheduleLines(weekBox, weekItems, "Aucun element sur les 7 prochains jours.");
     }
 
-    private void renderAlerts() {
-        List<TaskItem> overdueTasks = loadOverdueTasks();
-        List<Event> eventsToPrepare = loadEventsToPrepare();
-
+    private void renderAlerts(List<TaskItem> overdueTasks, List<Event> eventsToPrepare) {
         renderOverdueTaskLines(
                 overdueTasksBox,
                 overdueTasks,
@@ -258,6 +287,63 @@ public class DailyUseScreen extends VBox {
                 eventsToPrepareBox,
                 eventsToPrepare,
                 eventsToPrepare == null ? "Chargement des alertes evenements indisponible." : "Aucun evenement urgent a preparer."
+        );
+    }
+
+    private void renderPriorityAction(
+            DashboardMetrics metrics,
+            List<TaskItem> overdueTasks,
+            List<Event> eventsToPrepare
+    ) {
+        if (overdueTasks != null && !overdueTasks.isEmpty()) {
+            TaskItem topTask = overdueTasks.getFirst();
+            String due = topTask.dueDate() == null ? "sans echeance" : topTask.dueDate().toString();
+            setPriorityAction(
+                    "Traitez d'abord la tache en retard: " + topTask.title() + " (echeance " + due + ").",
+                    "Ouvrir les taches",
+                    DailyAction.OPEN_TASKS
+            );
+            return;
+        }
+
+        if (eventsToPrepare != null && !eventsToPrepare.isEmpty()) {
+            Event topEvent = eventsToPrepare.getFirst();
+            setPriorityAction(
+                    "Preparez l'evenement a venir: " + topEvent.title() + " (" + topEvent.eventDate() + ").",
+                    "Ouvrir les evenements",
+                    DailyAction.OPEN_EVENTS
+            );
+            return;
+        }
+
+        if (metrics != null && !metrics.todayItems().isEmpty()) {
+            DashboardScheduleItem item = metrics.todayItems().getFirst();
+            DailyAction action = item.type() == CalendarEntryType.EVENT
+                    ? DailyAction.OPEN_EVENTS
+                    : DailyAction.OPEN_MEETINGS;
+            String moduleLabel = item.type() == CalendarEntryType.EVENT ? "les evenements" : "les reunions";
+            setPriorityAction(
+                    "Point du jour: " + item.title() + " a " + formatTime(item.startTime()) + ".",
+                    "Ouvrir " + moduleLabel,
+                    action
+            );
+            return;
+        }
+
+        if (metrics != null && !metrics.urgentTaskItems().isEmpty()) {
+            DashboardTaskItem topUrgentTask = metrics.urgentTaskItems().getFirst();
+            setPriorityAction(
+                    "Lancez la tache urgente: " + topUrgentTask.title() + ".",
+                    "Ouvrir les taches",
+                    DailyAction.OPEN_TASKS
+            );
+            return;
+        }
+
+        setPriorityAction(
+                "Aucune urgence immediate. Vous pouvez preparer la semaine en creant un evenement ou une tache.",
+                "Creer evenement",
+                DailyAction.CREATE_EVENT
         );
     }
 
@@ -323,6 +409,12 @@ public class DailyUseScreen extends VBox {
         label.getStyleClass().add("muted-text");
         label.setWrapText(true);
         return label;
+    }
+
+    private void setPriorityAction(String message, String buttonLabel, DailyAction action) {
+        priorityMessageLabel.setText(message);
+        priorityActionButton.setText(buttonLabel);
+        priorityActionButton.setUserData(action);
     }
 
     private String formatTime(java.time.LocalTime time) {

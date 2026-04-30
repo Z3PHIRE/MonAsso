@@ -76,16 +76,15 @@ public class MainView {
     );
     private static final List<ScreenId> DEFAULT_PRIMARY_SCREENS = List.of(
             ScreenId.DAILY_USE,
-            ScreenId.DASHBOARD,
-            ScreenId.SEARCH,
-            ScreenId.CALENDAR,
             ScreenId.MEMBERS,
             ScreenId.EVENTS,
-            ScreenId.MEETINGS,
             ScreenId.TASKS,
+            ScreenId.CALENDAR,
+            ScreenId.MEETINGS,
             ScreenId.DOCUMENTS,
             ScreenId.CONTRIBUTIONS,
             ScreenId.EXPORTS,
+            ScreenId.SEARCH,
             ScreenId.SETTINGS
     );
 
@@ -393,6 +392,8 @@ public class MainView {
             case OPEN_CALENDAR -> navigationManager.navigate(ScreenId.CALENDAR);
             case OPEN_MEETINGS -> navigationManager.navigate(ScreenId.MEETINGS);
             case OPEN_DOCUMENTS -> navigationManager.navigate(ScreenId.DOCUMENTS);
+            case OPEN_CONTRIBUTIONS -> navigationManager.navigate(ScreenId.CONTRIBUTIONS);
+            case OPEN_EXPORTS -> navigationManager.navigate(ScreenId.EXPORTS);
         }
     }
 
@@ -411,7 +412,7 @@ public class MainView {
     private void reloadDataViews() {
         ScreenId current = navigationManager.currentScreen();
         if (current == null) {
-            current = ScreenId.DASHBOARD;
+            current = ScreenId.DAILY_USE;
         }
         navigationManager.clearCache(
                 ScreenId.DAILY_USE,

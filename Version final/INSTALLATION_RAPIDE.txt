@@ -1,0 +1,16 @@
+MonAsso - Installation rapide (Windows)
+
+Option 1 (portable, recommandee)
+1) Ouvrez le dossier MonAsso-v1.0.0\
+2) Lancez Lancer-MonAsso.bat
+
+Option 2 (archive unique)
+1) Dezippez MonAsso-v1.0.0-portable.zip
+2) Lancez Lancer-MonAsso.bat
+
+Le coeur applicatif est:
+MonAsso-v1.0.0\MonAsso\MonAsso.exe
+
+Aide:
+- TUTORIEL_UTILISATEUR.md
+- DEPLOIEMENT_WINDOWS.md

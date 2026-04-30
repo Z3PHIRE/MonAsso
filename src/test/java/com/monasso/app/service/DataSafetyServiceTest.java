@@ -18,6 +18,7 @@ class DataSafetyServiceTest {
         try (TestAppFixture fixture = TestAppFixture.create("data-safety")) {
             fixture.memberService.addMember("Anna", "Briand", null, null, null, LocalDate.now(), true, null);
             assertEquals(1, fixture.memberService.countAllMembers());
+            assertEquals("ok", fixture.dataSafetyService.verifyDatabaseIntegrity().toLowerCase());
 
             var backup = fixture.dataSafetyService.createBackup();
             assertTrue(Files.exists(backup));
@@ -27,6 +28,7 @@ class DataSafetyServiceTest {
 
             fixture.dataSafetyService.restoreBackup(backup);
             assertEquals(1, fixture.memberService.countAllMembers());
+            assertEquals("ok", fixture.dataSafetyService.verifyDatabaseIntegrity().toLowerCase());
 
             List<java.nio.file.Path> backups = fixture.dataSafetyService.listBackups();
             assertTrue(backups.stream().anyMatch(path -> path.getFileName().toString().endsWith(".db")));

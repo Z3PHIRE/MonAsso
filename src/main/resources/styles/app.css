@@ -179,6 +179,11 @@
     -fx-spacing: 10;
 }
 
+.daily-priority-panel {
+    -fx-background-color: derive(-app-accent, 86%);
+    -fx-border-color: derive(-app-accent, 30%);
+}
+
 .folded-panel {
     -fx-background-color: transparent;
 }

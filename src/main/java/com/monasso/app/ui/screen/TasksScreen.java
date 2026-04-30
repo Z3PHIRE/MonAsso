@@ -186,7 +186,7 @@ public class TasksScreen extends VBox {
 
         MenuButton moreButton = new MenuButton("Plus d'options");
         moreButton.getStyleClass().add("ghost-button");
-        MenuItem resetItem = new MenuItem("Reinitialiser");
+        MenuItem resetItem = new MenuItem("Reinitialiser filtres");
         resetItem.setOnAction(event -> {
             searchField.clear();
             dueDateFilterField.clear();
@@ -388,18 +388,22 @@ public class TasksScreen extends VBox {
     }
 
     private void refreshTasks() {
-        LocalDate dueDateFilter = parseOptionalDate(dueDateFilterField.getText(), "Filtre echeance");
-        MemberFilter assigneeFilter = assigneeFilterCombo.getValue();
-        StatusFilter statusFilter = statusFilterCombo.getValue();
+        try {
+            LocalDate dueDateFilter = parseOptionalDate(dueDateFilterField.getText(), "Filtre echeance");
+            MemberFilter assigneeFilter = assigneeFilterCombo.getValue();
+            StatusFilter statusFilter = statusFilterCombo.getValue();
 
-        tasks.setAll(taskService.getTasks(
-                searchField.getText(),
-                assigneeFilter == null ? null : assigneeFilter.memberId(),
-                dueDateFilter,
-                statusFilter == null ? null : statusFilter.status()
-        ));
-        tasksTable.refresh();
-        summaryLabel.setText(String.format(Locale.FRANCE, "Resultats : %d taches", tasks.size()));
+            tasks.setAll(taskService.getTasks(
+                    searchField.getText(),
+                    assigneeFilter == null ? null : assigneeFilter.memberId(),
+                    dueDateFilter,
+                    statusFilter == null ? null : statusFilter.status()
+            ));
+            tasksTable.refresh();
+            summaryLabel.setText(String.format(Locale.FRANCE, "Resultats : %d taches", tasks.size()));
+        } catch (Exception e) {
+            AlertUtils.error(getScene() == null ? null : getScene().getWindow(), "Taches", e.getMessage());
+        }
     }
 
     private void createTask() {

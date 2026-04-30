@@ -6,6 +6,11 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Comparator;
@@ -105,6 +110,36 @@ public class DataSafetyService {
             return databasePath;
         } catch (IOException e) {
             throw new IllegalStateException("Impossible de restaurer la sauvegarde selectionnee.", e);
+        }
+    }
+
+    public String verifyDatabaseIntegrity() {
+        Path databasePath = settingsService.getDatabasePath();
+        if (databasePath == null || !Files.exists(databasePath)) {
+            throw new IllegalStateException("Base SQLite introuvable: " + databasePath);
+        }
+
+        String url = "jdbc:sqlite:" + databasePath.toAbsolutePath().normalize();
+        try (Connection connection = DriverManager.getConnection(url);
+             Statement statement = connection.createStatement();
+             ResultSet resultSet = statement.executeQuery("PRAGMA quick_check")) {
+            StringBuilder result = new StringBuilder();
+            while (resultSet.next()) {
+                String line = resultSet.getString(1);
+                if (line == null || line.isBlank()) {
+                    continue;
+                }
+                if (result.length() > 0) {
+                    result.append(System.lineSeparator());
+                }
+                result.append(line.trim());
+            }
+            if (result.isEmpty()) {
+                throw new IllegalStateException("Verification SQLite inconclusive.");
+            }
+            return result.toString();
+        } catch (SQLException e) {
+            throw new IllegalStateException("Impossible de verifier l'integrite de la base.", e);
         }
     }
 

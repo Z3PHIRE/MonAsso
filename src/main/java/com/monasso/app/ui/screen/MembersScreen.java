@@ -250,11 +250,11 @@ public class MembersScreen extends VBox {
 
         tabs.getTabs().addAll(followUpTab, documentsTab);
 
-        Button createButton = new Button("Creer");
+        Button createButton = new Button("Creer personne");
         createButton.getStyleClass().add("accent-button");
         createButton.setOnAction(event -> createMember());
 
-        Button updateButton = new Button("Modifier");
+        Button updateButton = new Button("Modifier personne");
         updateButton.getStyleClass().add("primary-button");
         updateButton.setOnAction(event -> updateMember());
 
@@ -262,7 +262,7 @@ public class MembersScreen extends VBox {
         moreButton.getStyleClass().add("ghost-button");
         MenuItem clearItem = new MenuItem("Nouveau formulaire");
         clearItem.setOnAction(event -> clearForm());
-        MenuItem deleteItem = new MenuItem("Supprimer la selection");
+        MenuItem deleteItem = new MenuItem("Supprimer personne selectionnee");
         deleteItem.setOnAction(event -> deleteSelectedMember());
         moreButton.getItems().addAll(clearItem, deleteItem);
 

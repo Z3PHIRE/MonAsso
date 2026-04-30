@@ -146,6 +146,10 @@ public class SettingsScreen extends VBox {
         createBackupButton.getStyleClass().add("accent-button");
         createBackupButton.setOnAction(event -> createBackupNow());
 
+        Button verifyDatabaseButton = new Button("Verifier base SQLite");
+        verifyDatabaseButton.getStyleClass().add("primary-button");
+        verifyDatabaseButton.setOnAction(event -> verifyDatabaseNow());
+
         Button chooseBackupButton = new Button("Choisir sauvegarde");
         chooseBackupButton.getStyleClass().add("ghost-button");
         chooseBackupButton.setOnAction(event -> chooseBackupFile());
@@ -162,7 +166,7 @@ public class SettingsScreen extends VBox {
         demoDataItem.setOnAction(event -> loadDemoData());
         moreButton.getItems().addAll(openFolderItem, demoDataItem);
 
-        HBox row = new HBox(10, createBackupButton, chooseBackupButton, restoreButton, moreButton);
+        HBox row = new HBox(10, createBackupButton, verifyDatabaseButton, chooseBackupButton, restoreButton, moreButton);
         row.getStyleClass().add("action-row");
 
         panel.getChildren().addAll(selectedBackupField, row);
@@ -396,6 +400,21 @@ public class SettingsScreen extends VBox {
             DesktopUtils.openDirectory(settingsService.getBackupDirectory());
         } catch (Exception e) {
             AlertUtils.error(getScene().getWindow(), "Sauvegarde", e.getMessage());
+        }
+    }
+
+    private void verifyDatabaseNow() {
+        try {
+            String result = dataSafetyService.verifyDatabaseIntegrity();
+            if ("ok".equalsIgnoreCase(result.trim())) {
+                statusLabel.setText("Verification base: OK");
+                AlertUtils.info(getScene().getWindow(), "Base SQLite", "Verification d'integrite terminee: aucune anomalie.");
+            } else {
+                statusLabel.setText("Verification base: anomalies detectees");
+                AlertUtils.warning(getScene().getWindow(), "Base SQLite", "Resultat quick_check:\n" + result);
+            }
+        } catch (Exception e) {
+            AlertUtils.error(getScene().getWindow(), "Base SQLite", e.getMessage());
         }
     }
 

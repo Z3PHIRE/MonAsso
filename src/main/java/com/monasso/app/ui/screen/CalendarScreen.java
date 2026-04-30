@@ -104,6 +104,7 @@ public class CalendarScreen extends VBox {
 
     private final ObservableList<CalendarEntry> entries = FXCollections.observableArrayList();
     private final ObservableList<ResponsibleOption> responsibleFilters = FXCollections.observableArrayList();
+    private final ObservableList<Member> activeMembers = FXCollections.observableArrayList();
 
     private final ComboBox<CalendarViewMode> viewModeCombo = new ComboBox<>();
     private final ComboBox<TypeFilterOption> typeFilterCombo = new ComboBox<>();
@@ -326,7 +327,7 @@ public class CalendarScreen extends VBox {
                 return null;
             }
         });
-        quickResponsibleCombo.setItems(FXCollections.observableArrayList(memberService.getMembers("", MemberStatusFilter.ACTIVE)));
+        quickResponsibleCombo.setItems(activeMembers);
 
         GridPane grid = new GridPane();
         grid.getStyleClass().add("form-grid");
@@ -349,7 +350,7 @@ public class CalendarScreen extends VBox {
         grid.add(new Label("Categorie"), 0, 4);
         grid.add(quickCategoryField, 1, 4);
 
-        Button createButton = new Button("Creer rapidement");
+        Button createButton = new Button("Creer element");
         createButton.getStyleClass().add("accent-button");
         createButton.setOnAction(event -> quickCreateEntry());
 
@@ -372,7 +373,7 @@ public class CalendarScreen extends VBox {
 
         TableColumn<CalendarEntry, String> timeColumn = new TableColumn<>("Horaire");
         timeColumn.setCellValueFactory(cell -> new javafx.beans.property.SimpleStringProperty(
-                TIME_DISPLAY.format(cell.getValue().startTime()) + " - " + TIME_DISPLAY.format(cell.getValue().endTime())
+                formatTime(cell.getValue().startTime()) + " - " + formatTime(cell.getValue().endTime())
         ));
         timeColumn.setPrefWidth(140);
 
@@ -440,9 +441,10 @@ public class CalendarScreen extends VBox {
     }
 
     private void loadResponsibleFilters() {
+        activeMembers.setAll(memberService.getMembers("", MemberStatusFilter.ACTIVE));
         responsibleFilters.clear();
         responsibleFilters.add(new ResponsibleOption(null, "Tous"));
-        for (Member member : memberService.getMembers("", MemberStatusFilter.ACTIVE)) {
+        for (Member member : activeMembers) {
             responsibleFilters.add(new ResponsibleOption(member.id(), member.fullName()));
         }
         responsibleFilterCombo.setItems(responsibleFilters);
@@ -450,42 +452,49 @@ public class CalendarScreen extends VBox {
     }
 
     private void refreshEntries() {
-        CalendarViewMode mode = currentMode();
-        LocalDate fromDate;
-        LocalDate toDate;
-        switch (mode) {
-            case MONTH -> {
-                fromDate = anchorDate.withDayOfMonth(1);
-                toDate = anchorDate.withDayOfMonth(anchorDate.lengthOfMonth());
+        try {
+            CalendarViewMode mode = currentMode();
+            LocalDate fromDate;
+            LocalDate toDate;
+            switch (mode) {
+                case MONTH -> {
+                    fromDate = anchorDate.withDayOfMonth(1);
+                    toDate = anchorDate.withDayOfMonth(anchorDate.lengthOfMonth());
+                }
+                case WEEK -> {
+                    fromDate = anchorDate.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
+                    toDate = anchorDate.with(TemporalAdjusters.nextOrSame(DayOfWeek.SUNDAY));
+                }
+                case LIST -> {
+                    fromDate = anchorDate;
+                    toDate = anchorDate.plusDays(45);
+                }
+                default -> throw new IllegalStateException("Mode calendrier non supporte.");
             }
-            case WEEK -> {
-                fromDate = anchorDate.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
-                toDate = anchorDate.with(TemporalAdjusters.nextOrSame(DayOfWeek.SUNDAY));
-            }
-            case LIST -> {
-                fromDate = anchorDate;
-                toDate = anchorDate.plusDays(45);
-            }
-            default -> throw new IllegalStateException("Mode calendrier non supporte.");
+
+            TypeFilterOption typeFilter = typeFilterCombo.getValue();
+            StatusFilterOption statusFilter = statusFilterCombo.getValue();
+            ResponsibleOption responsibleFilter = responsibleFilterCombo.getValue();
+
+            entries.setAll(calendarService.getEntries(
+                    fromDate,
+                    toDate,
+                    typeFilter == null ? null : typeFilter.value(),
+                    statusFilter == null ? null : statusFilter.value(),
+                    responsibleFilter == null ? null : responsibleFilter.memberId(),
+                    categoryFilterField.getText()
+            ));
+            tableView.refresh();
+
+            periodLabel.setText("Periode: " + fromDate + " -> " + toDate + " (" + mode + ")");
+            long conflictCount = entries.stream().filter(CalendarEntry::conflict).count();
+            summaryLabel.setText(String.format(Locale.FRANCE, "Elements: %d | conflits detectes: %d", entries.size(), conflictCount));
+        } catch (Exception e) {
+            entries.clear();
+            tableView.refresh();
+            summaryLabel.setText("Elements indisponibles (erreur de chargement).");
+            AlertUtils.error(getScene() == null ? null : getScene().getWindow(), "Calendrier", e.getMessage());
         }
-
-        TypeFilterOption typeFilter = typeFilterCombo.getValue();
-        StatusFilterOption statusFilter = statusFilterCombo.getValue();
-        ResponsibleOption responsibleFilter = responsibleFilterCombo.getValue();
-
-        entries.setAll(calendarService.getEntries(
-                fromDate,
-                toDate,
-                typeFilter == null ? null : typeFilter.value(),
-                statusFilter == null ? null : statusFilter.value(),
-                responsibleFilter == null ? null : responsibleFilter.memberId(),
-                categoryFilterField.getText()
-        ));
-        tableView.refresh();
-
-        periodLabel.setText("Periode: " + fromDate + " -> " + toDate + " (" + mode + ")");
-        long conflictCount = entries.stream().filter(CalendarEntry::conflict).count();
-        summaryLabel.setText(String.format(Locale.FRANCE, "Elements: %d | conflits detectes: %d", entries.size(), conflictCount));
     }
 
     private void openDetail(CalendarEntry entry) {
@@ -495,29 +504,35 @@ public class CalendarScreen extends VBox {
             detailDescriptionLabel.setText("");
             return;
         }
+        try {
+            if (entry.entryType() == CalendarEntryType.EVENT) {
+                Event event = eventService.getEvent(entry.sourceId());
+                detailTitleLabel.setText("[Evenement] " + event.title());
+                detailMetaLabel.setText(
+                        event.eventDate() + " "
+                                + formatTime(event.eventTime()) + "-" + formatTime(event.endTime())
+                                + " | " + event.statusLabel()
+                                + " | " + defaultValue(event.location())
+                );
+                detailDescriptionLabel.setText(defaultValue(event.description()));
+                return;
+            }
 
-        if (entry.entryType() == CalendarEntryType.EVENT) {
-            Event event = eventService.getEvent(entry.sourceId());
-            detailTitleLabel.setText("[Evenement] " + event.title());
+            Meeting meeting = meetingService.getMeeting(entry.sourceId());
+            detailTitleLabel.setText("[Reunion] " + meeting.title());
             detailMetaLabel.setText(
-                    event.eventDate() + " "
-                            + TIME_DISPLAY.format(event.eventTime()) + "-" + TIME_DISPLAY.format(event.endTime())
-                            + " | " + event.statusLabel()
-                            + " | " + defaultValue(event.location())
+                    meeting.meetingDate() + " "
+                            + formatTime(meeting.startTime()) + "-" + formatTime(meeting.endTime())
+                            + " | " + meeting.statusLabel()
+                            + " | " + defaultValue(meeting.location())
             );
-            detailDescriptionLabel.setText(defaultValue(event.description()));
-            return;
+            detailDescriptionLabel.setText(defaultValue(meeting.agenda()));
+        } catch (Exception e) {
+            detailTitleLabel.setText("Element indisponible");
+            detailMetaLabel.setText("");
+            detailDescriptionLabel.setText("");
+            AlertUtils.error(getScene() == null ? null : getScene().getWindow(), "Calendrier", e.getMessage());
         }
-
-        Meeting meeting = meetingService.getMeeting(entry.sourceId());
-        detailTitleLabel.setText("[Reunion] " + meeting.title());
-        detailMetaLabel.setText(
-                meeting.meetingDate() + " "
-                        + TIME_DISPLAY.format(meeting.startTime()) + "-" + TIME_DISPLAY.format(meeting.endTime())
-                        + " | " + meeting.statusLabel()
-                        + " | " + defaultValue(meeting.location())
-        );
-        detailDescriptionLabel.setText(defaultValue(meeting.agenda()));
     }
 
     private void quickCreateEntry() {
@@ -599,6 +614,13 @@ public class CalendarScreen extends VBox {
         } catch (DateTimeParseException e) {
             throw new IllegalArgumentException("Heure invalide. Format attendu: HH:mm.");
         }
+    }
+
+    private String formatTime(LocalTime time) {
+        if (time == null) {
+            return "--:--";
+        }
+        return TIME_DISPLAY.format(time);
     }
 
     private String defaultValue(String value) {

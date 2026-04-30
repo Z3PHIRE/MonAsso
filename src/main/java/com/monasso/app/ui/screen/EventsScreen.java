@@ -346,11 +346,11 @@ public class EventsScreen extends VBox {
         advancedPane.getStyleClass().add("folded-panel");
         advancedPane.setExpanded(false);
 
-        Button createButton = new Button("Creer");
+        Button createButton = new Button("Creer evenement");
         createButton.getStyleClass().add("accent-button");
         createButton.setOnAction(event -> createEvent());
 
-        Button updateButton = new Button("Modifier");
+        Button updateButton = new Button("Modifier evenement");
         updateButton.getStyleClass().add("primary-button");
         updateButton.setOnAction(event -> updateEvent());
 
@@ -364,7 +364,7 @@ public class EventsScreen extends VBox {
         clearItem.setOnAction(event -> clearForm());
         MenuItem viewItem = new MenuItem("Voir suivi");
         viewItem.setOnAction(event -> openSelectedEventDetail());
-        MenuItem deleteItem = new MenuItem("Supprimer la selection");
+        MenuItem deleteItem = new MenuItem("Supprimer evenement selectionne");
         deleteItem.setOnAction(event -> deleteSelectedEvent());
         moreButton.getItems().addAll(clearItem, viewItem, deleteItem);
 
@@ -1028,10 +1028,14 @@ public class EventsScreen extends VBox {
     }
 
     private void refreshEvents() {
-        ArchiveFilter archiveFilter = archiveFilterCombo.getValue() == null ? ArchiveFilter.ACTIVE : archiveFilterCombo.getValue();
-        events.setAll(eventService.getEvents(searchField.getText(), upcomingOnlyCheck.isSelected(), archiveFilter));
-        tableSummary.setText(String.format(Locale.FRANCE, "Resultats : %d evenements (%s)", events.size(), archiveFilter.label()));
-        eventsTable.refresh();
+        try {
+            ArchiveFilter archiveFilter = archiveFilterCombo.getValue() == null ? ArchiveFilter.ACTIVE : archiveFilterCombo.getValue();
+            events.setAll(eventService.getEvents(searchField.getText(), upcomingOnlyCheck.isSelected(), archiveFilter));
+            tableSummary.setText(String.format(Locale.FRANCE, "Resultats : %d evenements (%s)", events.size(), archiveFilter.label()));
+            eventsTable.refresh();
+        } catch (Exception e) {
+            AlertUtils.error(getScene() == null ? null : getScene().getWindow(), "Evenements", e.getMessage());
+        }
     }
 
     private void toggleArchiveSelectedEvent() {
@@ -1672,8 +1676,8 @@ public class EventsScreen extends VBox {
         editingEventId = event.id();
         titleField.setText(event.title());
         dateField.setText(event.eventDate().toString());
-        startTimeField.setText(TIME_DISPLAY.format(event.eventTime()));
-        endTimeField.setText(TIME_DISPLAY.format(event.endTime()));
+        startTimeField.setText(formatTime(event.eventTime()));
+        endTimeField.setText(formatTime(event.endTime()));
         locationField.setText(defaultValue(event.location()));
         capacityField.setText(event.capacity() == null ? "" : String.valueOf(event.capacity()));
         descriptionArea.setText(defaultValue(event.description()));
@@ -1803,6 +1807,13 @@ public class EventsScreen extends VBox {
 
     private String formatAmount(double amount) {
         return String.format(Locale.FRANCE, "%.2f", amount);
+    }
+
+    private String formatTime(LocalTime time) {
+        if (time == null) {
+            return "";
+        }
+        return TIME_DISPLAY.format(time);
     }
 
     private void applyDisplayMode() {
